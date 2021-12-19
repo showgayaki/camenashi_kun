@@ -17,11 +17,12 @@ class Mail:
 
     def send_mail(self, msg):
         smtp_obj = smtplib.SMTP(self.smtp_dict['smtp_server'], self.smtp_dict['smtp_port'])
+        send_list = self.smtp_dict['mail_to'].split(',') + self.smtp_dict['mail_cc'].split(',')
         try:
             smtp_obj.ehlo()
             smtp_obj.starttls()
             smtp_obj.login(self.smtp_dict['smtp_user'], self.smtp_dict['smtp_pass'])
-            smtp_obj.sendmail(self.smtp_dict['smtp_user'], self.smtp_dict['mail_to'], str(msg))
+            smtp_obj.sendmail(self.smtp_dict['smtp_user'], send_list, str(msg))
             return 'Succeeded to send mail. To [{}]'.format(self.smtp_dict['mail_to'])
         except smtplib.SMTPException as e:
             return 'Error: {}'.format(e)
