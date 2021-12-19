@@ -11,7 +11,7 @@ class Config:
         dotenv_path = Path(self.root_dir).resolve().joinpath('.env')
         load_dotenv(dotenv_path)
         conf = {
-            'app_name': 'Camknashi Kun',
+            'app_name': 'Camenashi Kun',
             'mail_info': {
                 'smtp_server': os.environ.get('SMTP_SERVER'),
                 'smtp_port': os.environ.get('SMTP_PORT'),

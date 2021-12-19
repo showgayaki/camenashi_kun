@@ -5,9 +5,9 @@ import cv2
 import base64
 from ping3 import ping
 from pathlib import Path
-from camknashi_kun.config import Config
-from camknashi_kun.logger import Logger
-from camknashi_kun.mail import Mail
+from camenashi_kun.config import Config
+from camenashi_kun.logger import Logger
+from camenashi_kun.mail import Mail
 import yolov5.detect as detect
 
 
