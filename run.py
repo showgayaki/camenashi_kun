@@ -51,7 +51,7 @@ def save_image(frame, file_name):
     return image_file_path
 
 
-def send_mail(cfg, label, image_file_path):
+def send_mail(cfg, label=None, image_file_path=None):
     mail_info = cfg['mail_info']
     mail = Mail(mail_info)
 
@@ -60,10 +60,14 @@ def send_mail(cfg, label, image_file_path):
         with open(image_file_path, 'rb') as f:
             data = base64.b64encode(f.read())
         image = 'data:image/png;base64,{}'.format(data.decode('utf-8'))
+        body = '{} を動体検知しました。<img src="{}" style="width: 100%; margin-top: 20px;">'.format(label, image)
+    else:
+        body = '[{}]と疎通確認が取れませんでした。<br>[{}]の状態を確認してください。'.format(
+            cfg['camera_info']['camera_ip'], cfg['camera_info']['camera_ip'])
 
     body_dict = {
         'subject': '動体検知@{} from {}'.format(cfg['camera_info']['camera_ip'], cfg['app_name']),
-        'body': '{} を動体検知しました。<img src="{}" style="width: 100%; margin-top: 20px;">'.format(label, image)
+        'body': body
     }
     msg = mail.create_message(body_dict)
     mail_result = mail.send_mail(msg)
@@ -96,11 +100,9 @@ def main():
         log.logging(log_level, msg)
         ping_result = False
         if log_level == 'info':
+            log.logging(log_level, 'Start streaming and detecting.')
             ping_result = True
             break
-    else:
-        log.logging(log_level, '[{}] is NOT responding. Please check device.'
-        .format(cfg['camera_info']['camera_ip']))
 
     # 疎通確認が取れたら実行
     if ping_result:
@@ -136,7 +138,13 @@ def main():
                 log.logging(log_level, '===== Finish {} ====='.format(cfg['app_name']))
                 break
     else:
-        log_level = 'info'
+        log_level = 'error'
+        log.logging(log_level, '[{}] is NOT responding. Please check device.'
+        .format(cfg['camera_info']['camera_ip']))
+        # エラーメール送信
+        mail_result = send_mail(cfg)
+        log_level = 'error' if 'Error' in mail_result else 'info'
+        log.logging(log_level, 'Mail result: {}'.format(mail_result))
         log.logging(log_level, '===== Finish {} ====='.format(cfg['app_name']))
 
 
