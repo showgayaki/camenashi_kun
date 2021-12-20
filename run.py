@@ -137,6 +137,9 @@ def main():
             log_level = 'info'
             log.logging(log_level, 'Ctrl + C pressed...'.format(cfg['app_name']))
             log.logging(log_level, '===== Finish {} ====='.format(cfg['app_name']))
+        except Exception as e:
+            log_level = 'error'
+            log.logging(log_level, 'Error: {}'.format(e))
     else:
         log_level = 'error'
         log.logging(log_level, '[{}] is NOT responding. Please check device.'
