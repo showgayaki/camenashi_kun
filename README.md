@@ -9,9 +9,9 @@ open-pythonのインストールに失敗するときは、cmakeのインスト�
 参考：https://docs.opencv.org/4.x/d2/de6/tutorial_py_setup_in_ubuntu.html  
 
 ### 仮想環境作成
-`python3 -m venv .venv`
-`source .venv/bin/activate`
-`pip install -r requirements.txt`
+`python3 -m venv .venv`  
+`source .venv/bin/activate`  
+`pip install -r requirements.txt`  
 
 ## .env設定例
 ```
