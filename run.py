@@ -108,35 +108,35 @@ def main():
     if ping_result:
         detected_count = 0
         last_label = ''
-        for label, frame, log_str in detect.run(weights=WEITHTS, imgsz=IMAGE_SIZE, source=camera_url, nosave=True):
-            # 検知対象リストにあるか判定
-            if label in cfg['detect_label']:
-                detected_count += 1
-                log.logging(log_level, log_str)
+        try:
+            for label, frame, log_str in detect.run(weights=WEITHTS, imgsz=IMAGE_SIZE, source=camera_url, nosave=True):
+                # 検知対象リストにあるか判定
+                if label in cfg['detect_label']:
+                    detected_count += 1
+                    log.logging(log_level, log_str)
 
-            # 検知回数の閾値に達したら画像を保存して通知
-            if detected_count == cfg['notice_threshold']:
-                # カウンタリセット
-                detected_count = 0
-                # 現在時刻取得
-                dt_now = datetime.datetime.now().strftime('%Y%m%d-%H%M%S')
-                # 画像保存
-                image_file_path = save_image(frame, dt_now)
-                # 画像添付メール送信
-                mail_result = send_mail(cfg, label, image_file_path)
-                log_level = 'error' if 'Error' in mail_result else 'info'
-                log.logging(log_level, 'Mail result: {}'.format(mail_result))
-                # 検知後は一時停止して、連続通知回避
-                log.logging(log_level, 'Pause detecting for {} seconds'.format(cfg['pause_seconds']))
-                time.sleep(cfg['pause_seconds'])
-                log.logging(log_level, 'Restart detecting.')
+                # 検知回数の閾値に達したら画像を保存して通知
+                if detected_count == cfg['notice_threshold']:
+                    # カウンタリセット
+                    detected_count = 0
+                    # 現在時刻取得
+                    dt_now = datetime.datetime.now().strftime('%Y%m%d-%H%M%S')
+                    # 画像保存
+                    image_file_path = save_image(frame, dt_now)
+                    # 画像添付メール送信
+                    mail_result = send_mail(cfg, label, image_file_path)
+                    log_level = 'error' if 'Error' in mail_result else 'info'
+                    log.logging(log_level, 'Mail result: {}'.format(mail_result))
+                    # 検知後は一時停止して、連続通知回避
+                    log.logging(log_level, 'Pause detecting for {} seconds'.format(cfg['pause_seconds']))
+                    time.sleep(cfg['pause_seconds'])
+                    log.logging(log_level, 'Restart detecting.')
 
-            # q が押されたら終了
-            if cv2.waitKey(1) & 0xFF == ord('q'):
-                log_level = 'info'
-                log.logging(log_level, 'Q pressed...'.format(cfg['app_name']))
-                log.logging(log_level, '===== Finish {} ====='.format(cfg['app_name']))
-                break
+                    break
+        except KeyboardInterrupt:
+            log_level = 'info'
+            log.logging(log_level, 'Ctrl + C pressed...'.format(cfg['app_name']))
+            log.logging(log_level, '===== Finish {} ====='.format(cfg['app_name']))
     else:
         log_level = 'error'
         log.logging(log_level, '[{}] is NOT responding. Please check device.'
