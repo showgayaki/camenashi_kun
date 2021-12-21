@@ -116,10 +116,12 @@ def main():
 
                 # 検知回数の閾値に達したら画像を保存して通知
                 if detected_count == cfg['notice_threshold']:
+                    mail_flag = True
+                    # 検知ログ
                     log_level = 'info'
                     log.logging(log_level, 'Detected: {}'.format(label))
+                    # ラベルを取っておく
                     last_label = label
-                    mail_flag = True
                     # カウンタリセット
                     detected_count = 0
                     # 現在時刻取得
@@ -142,7 +144,10 @@ def main():
                     image_list.append(image_file_path)
                     # 画像添付メール送信
                     mail_result = send_mail(cfg, last_label, image_list)
+                    # 初期化
                     last_label = ''
+                    image_list = []
+                    # メール送信ログ
                     log_level = 'error' if 'Error' in mail_result else 'info'
                     log.logging(log_level, 'Mail result: {}'.format(mail_result))
                     # 検知後は一時停止して、連続通知回避

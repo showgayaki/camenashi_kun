@@ -21,6 +21,7 @@ class Mail:
         body = MIMEText(body_dict['body'], 'html')
         msg.attach(body)
 
+        # 画像があったら添付
         if image_list:
             for image_file_path in image_list:
                 with open(image_file_path, 'rb') as f:
