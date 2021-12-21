@@ -51,16 +51,13 @@ def save_image(frame, file_name):
     return image_file_path
 
 
-def send_mail(cfg, label=None, image_file_path=None):
+def send_mail(cfg, label=None, image_list=None):
     mail_info = cfg['mail_info']
     mail = Mail(mail_info)
 
     # 画像をbase64に変換
-    if image_file_path:
-        with open(image_file_path, 'rb') as f:
-            data = base64.b64encode(f.read())
-        image = 'data:image/png;base64,{}'.format(data.decode('utf-8'))
-        body = '{} を動体検知しました。<img src="{}" style="width: 100%; margin-top: 20px;">'.format(label, image)
+    if image_list:
+        body = '{} を動体検知しました。<br>'.format(label)
     else:
         body = '[{}]と疎通確認が取れませんでした。<br>[{}]の状態を確認してください。'.format(
             cfg['camera_info']['camera_ip'], cfg['camera_info']['camera_ip'])
@@ -69,7 +66,7 @@ def send_mail(cfg, label=None, image_file_path=None):
         'subject': '動体検知@{} from {}'.format(cfg['camera_info']['camera_ip'], cfg['app_name']),
         'body': body
     }
-    msg = mail.create_message(body_dict)
+    msg = mail.create_message(body_dict, image_list)
     mail_result = mail.send_mail(msg)
     return mail_result
 
@@ -107,6 +104,8 @@ def main():
     # 疎通確認が取れたら実行
     if ping_result:
         detected_count = 0
+        mail_flag = False
+        image_list = []
         last_label = ''
         try:
             for label, frame, log_str in detect.run(weights=WEITHTS, imgsz=IMAGE_SIZE, source=camera_url, nosave=True):
@@ -117,22 +116,39 @@ def main():
 
                 # 検知回数の閾値に達したら画像を保存して通知
                 if detected_count == cfg['notice_threshold']:
+                    log_level = 'info'
+                    log.logging(log_level, 'Detected: {}'.format(label))
+                    last_label = label
+                    mail_flag = True
                     # カウンタリセット
                     detected_count = 0
                     # 現在時刻取得
                     dt_now = datetime.datetime.now().strftime('%Y%m%d-%H%M%S')
                     # 画像保存
                     image_file_path = save_image(frame, dt_now)
+                    image_list.append(image_file_path)
+                    log.logging(log_level, 'Save image: {}'.format(image_file_path))
+                    log.logging(log_level, 'Capture interval: {} seconds'.format(cfg['capture_interval']))
+                    # 待機
+                    time.sleep(cfg['capture_interval'])
+                    continue
+
+                if mail_flag:
+                    mail_flag = False
+                    # 現在時刻取得
+                    dt_now = datetime.datetime.now().strftime('%Y%m%d-%H%M%S')
+                    # 画像保存
+                    image_file_path = save_image(frame, dt_now)
+                    image_list.append(image_file_path)
                     # 画像添付メール送信
-                    mail_result = send_mail(cfg, label, image_file_path)
+                    mail_result = send_mail(cfg, last_label, image_list)
+                    last_label = ''
                     log_level = 'error' if 'Error' in mail_result else 'info'
                     log.logging(log_level, 'Mail result: {}'.format(mail_result))
                     # 検知後は一時停止して、連続通知回避
                     log.logging(log_level, 'Pause detecting for {} seconds'.format(cfg['pause_seconds']))
                     time.sleep(cfg['pause_seconds'])
                     log.logging(log_level, 'Restart detecting.')
-
-                    break
         except KeyboardInterrupt:
             log_level = 'info'
             log.logging(log_level, 'Ctrl + C pressed...'.format(cfg['app_name']))

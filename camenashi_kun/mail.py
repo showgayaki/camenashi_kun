@@ -1,18 +1,32 @@
+from email.mime import image
 import smtplib
 from email.mime.text import MIMEText
+from email.mime.image import MIMEImage
+from email.mime.multipart import MIMEMultipart
 from email.utils import formatdate
+from pathlib import Path
 
 
 class Mail:
     def __init__(self, smtp_dict):
         self.smtp_dict = smtp_dict.copy()
 
-    def create_message(self, body_dict):
-        msg = MIMEText(body_dict['body'], 'html')
+    def create_message(self, body_dict, image_list=None):
+        msg = MIMEMultipart()
         msg['Subject'] = body_dict['subject']
         msg['To'] = self.smtp_dict['mail_to']
         msg['Cc'] = self.smtp_dict['mail_cc']
         msg['Date'] = formatdate()
+
+        body = MIMEText(body_dict['body'], 'html')
+        msg.attach(body)
+
+        if image_list:
+            for image_file_path in image_list:
+                with open(image_file_path, 'rb') as f:
+                    img = f.read()
+                    image = MIMEImage(img, name=Path(image_file_path).name)
+                msg.attach(image)
         return msg
 
     def send_mail(self, msg):

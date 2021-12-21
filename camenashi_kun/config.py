@@ -28,6 +28,7 @@ class Config:
             'notice_threshold': int(os.environ.get('NOTICE_THRESHOLD')),
             'detect_label': set(os.environ.get('DETECT_LABEL').split(',')),
             # 'detect_list': set(os.environ.get('DETECT_LIST').split(','))
+            'capture_interval': int(os.environ.get('CAPTURE_INTERVAL')),
             'pause_seconds': int(os.environ.get('PAUSE_SECONDS')),
         }
         return conf
