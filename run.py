@@ -114,12 +114,15 @@ def main():
                     detected_count += 1
                     log.logging(log_level, log_str)
 
+                # メール通知フラグが立っていたらメール送信
                 if mail_flag:
+                    # Falseに戻す
                     mail_flag = False
                     # 現在時刻取得
                     dt_now = datetime.datetime.now().strftime('%Y%m%d-%H%M%S')
                     # 画像保存
                     image_file_path = save_image(frame, dt_now)
+                    log.logging(log_level, 'Image saved: {}'.format(image_file_path))
                     image_list.append(image_file_path)
                     # 画像添付メール送信
                     mail_result = send_mail(cfg, last_label, image_list)
@@ -149,7 +152,7 @@ def main():
                     # 画像保存
                     image_file_path = save_image(frame, dt_now)
                     image_list.append(image_file_path)
-                    log.logging(log_level, 'Save image: {}'.format(image_file_path))
+                    log.logging(log_level, 'Image saved: {}'.format(image_file_path))
                     log.logging(log_level, 'Capture interval: {} seconds'.format(cfg['capture_interval']))
                     # 待機
                     time.sleep(cfg['capture_interval'])
