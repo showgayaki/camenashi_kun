@@ -48,7 +48,7 @@ def save_image(frame, file_name):
     image_file_path = str(Path.joinpath(image_dir, f'{file_name}.png'))
     # 画像保存
     cv2.imwrite(image_file_path, frame)
-    return image_file_path
+    return image_dir, image_file_path
 
 
 def send_mail(cfg, label=None, image_list=None):
@@ -121,11 +121,18 @@ def main():
                     # 現在時刻取得
                     dt_now = datetime.datetime.now().strftime('%Y%m%d-%H%M%S')
                     # 画像保存
-                    image_file_path = save_image(frame, dt_now)
+                    image_dir, image_file_path = save_image(frame, dt_now)
+                    log_level = 'info'
                     log.logging(log_level, 'Image saved: {}'.format(image_file_path))
                     image_list.append(image_file_path)
                     # 画像添付メール送信
                     mail_result = send_mail(cfg, last_label, image_list)
+                    # 作成した画像削除
+                    remove_images = []
+                    for image in image_dir.iterdir():
+                        remove_images.append(str(image))
+                        Path(image).unlink()
+                    log.logging(log_level, 'Delete images: {}'.format(remove_images))
                     # 初期化
                     last_label = ''
                     image_list = []
@@ -150,7 +157,7 @@ def main():
                     # 現在時刻取得
                     dt_now = datetime.datetime.now().strftime('%Y%m%d-%H%M%S')
                     # 画像保存
-                    image_file_path = save_image(frame, dt_now)
+                    _, image_file_path = save_image(frame, dt_now)
                     image_list.append(image_file_path)
                     log.logging(log_level, 'Image saved: {}'.format(image_file_path))
                     log.logging(log_level, 'Capture interval: {} seconds'.format(cfg['capture_interval']))
