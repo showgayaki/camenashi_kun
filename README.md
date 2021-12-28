@@ -8,6 +8,11 @@ open-pythonのインストールに失敗するときは、cmakeのインスト�
 `sudo apt install cmake`  
 参考：https://docs.opencv.org/4.x/d2/de6/tutorial_py_setup_in_ubuntu.html  
 
+#### SciPyインストール
+SciPyのインストールに失敗するときは、以下が必要かも。  
+`sudo apt install libatlas-base-dev gfortran`  
+参考：https://qiita.com/jooex/items/61a9169f2f88580d15ff
+
 ### 仮想環境作成
 `python3 -m venv .venv`  
 `source .venv/bin/activate`  
@@ -32,7 +37,7 @@ PAUSE_SECONDS=60
 ```
 
 ## 実行
-環境によってどちらかのコマンドを叩く。
-仮想環境に入っていなくてもOK。
-`bash run.sh`
+環境によってどちらかのコマンドを叩く。  
+仮想環境に入っていなくてもOK。  
+`bash run.sh`  
 `zsh run.sh`
