@@ -1,4 +1,10 @@
 #!/bin/zsh
 cd `dirname $0`
 source .venv/bin/activate
-python run.py
+
+opt=$1
+if [ "$opt" = "--no-view" ]; then
+    python run.py $opt
+else
+    python run.py
+fi

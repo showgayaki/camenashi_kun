@@ -1,6 +1,8 @@
+import argparse
 import time
 import datetime
 import socket
+from typing import Optional
 import cv2
 import base64
 from ping3 import ping
@@ -71,7 +73,7 @@ def send_mail(cfg, label=None, image_list=None):
     return mail_result
 
 
-def main():
+def main(no_view=False):
     WEITHTS = 'yolov5/yolov5s.pt'
     IMAGE_SIZE = [640, 640]
     computer_name = socket.gethostname()
@@ -107,8 +109,10 @@ def main():
         mail_flag = False
         image_list = []
         last_label = ''
+        # ストリーミング表示するかは、引数から受け取る
+        view_img = not no_view
         try:
-            for label, frame, log_str in detect.run(weights=WEITHTS, imgsz=IMAGE_SIZE, source=camera_url, nosave=True):
+            for label, frame, log_str in detect.run(weights=WEITHTS, imgsz=IMAGE_SIZE, source=camera_url, nosave=True, view_img=view_img):
                 # 検知対象リストにあるか判定
                 if label in cfg['detect_label']:
                     detected_count += 1
@@ -183,5 +187,13 @@ def main():
         log.logging(log_level, '===== Finish {} ====='.format(cfg['app_name']))
 
 
+def parse_opt():
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--no-view', default=False, action='store_true', help='hide stream')
+    opt = parser.parse_args()
+    return opt
+
+
 if __name__ == '__main__':
-    main()
+    opt = parse_opt()
+    main(opt)
