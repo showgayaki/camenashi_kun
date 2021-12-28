@@ -40,4 +40,22 @@ PAUSE_SECONDS=60
 環境によってどちらかのコマンドを叩く。  
 仮想環境に入っていなくてもOK。  
 `bash run.sh`  
-`zsh run.sh`
+`zsh run.sh`  
+
+## サービス登録
+`chmod 755 run.sh`  
+`sudo vi /lib/systemd/system/camenashi_kun.service`  
+```
+[Unit]
+Description=camenashi_kun
+
+[Service]
+Type=simple
+Restart=always
+ExecStart=[path to]/camenashi_kun/run.sh --no-view
+
+[Install]
+WantedBy=multi-user.target
+```
+`sudo systemctl enable camenashi_kun.service`  
+`sudo systemctl start camenashi_kun.service`  

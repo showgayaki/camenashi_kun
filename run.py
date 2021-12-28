@@ -2,6 +2,7 @@ import argparse
 import time
 import datetime
 import socket
+import signal
 from typing import Optional
 import cv2
 import base64
@@ -11,6 +12,13 @@ from camenashi_kun.config import Config
 from camenashi_kun.logger import Logger
 from camenashi_kun.mail import Mail
 import yolov5.detect as detect
+
+
+class TerminatedExecption(Exception):
+    pass
+
+def raise_exception(*_):
+    raise TerminatedExecption()
 
 
 def load_config(root_dir):
@@ -78,6 +86,8 @@ def main(no_view=False):
     IMAGE_SIZE = [640, 640]
     computer_name = socket.gethostname()
     root_dir = Path(__file__).resolve().parent
+    # systemdの終了を受け取る
+    signal.signal(signal.SIGTERM, raise_exception)
     # ログ
     log = Logger(root_dir)
     log_level = 'info'
@@ -173,9 +183,25 @@ def main(no_view=False):
             log_level = 'info'
             log.logging(log_level, 'Ctrl + C pressed...'.format(cfg['app_name']))
             log.logging(log_level, '===== Finish {} ====='.format(cfg['app_name']))
+        except TerminatedExecption:
+            log.logging(log_level, 'TerminatedExecption: stopped by systemd')
+            log.logging(log_level, '===== Finish {} ====='.format(cfg['app_name']))
+        except OSError as e:
+            import traceback
+            traceback.print_exc()
+            log_level = 'error'
+            log.logging(log_level, 'ERROR: {}'.format(e))
+            log_level = 'info'
+            log.logging(log_level, 'Restart {}'.format(cfg['app_name']))
+            # systemdで再起動
+            raise e
         except Exception as e:
             log_level = 'error'
-            log.logging(log_level, 'Error: {}'.format(e))
+            log.logging(log_level, 'Unkown Error: {}'.format(e))
+            log_level = 'info'
+            log.logging(log_level, 'Restart {}'.format(cfg['app_name']))
+            # systemdで再起動
+            raise e
     else:
         log_level = 'error'
         log.logging(log_level, '[{}] is NOT responding. Please check device.'
