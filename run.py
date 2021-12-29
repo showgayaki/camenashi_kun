@@ -115,10 +115,11 @@ def main(no_view=False):
 
     # 疎通確認が取れたら実行
     if ping_result:
-        detected_count = 0
-        mail_flag = False
-        image_list = []
-        last_label = ''
+        detected_count = 0 # 検知回数
+        no_detected_count = 0 # 非検知回数
+        mail_flag = False # メール送信フラグ
+        image_list = [] # 保存した画像パスリスト
+        last_label = '' # メール送信用の検知した物体のラベル
         # ストリーミング表示するかは、引数から受け取る
         view_img = not no_view
         try:
@@ -127,6 +128,8 @@ def main(no_view=False):
                 if label in cfg['detect_label']:
                     detected_count += 1
                     log.logging(log_level, log_str)
+                else:
+                    no_detected_count += 1
 
                 # メール通知フラグが立っていたらメール送信
                 if mail_flag:
@@ -178,6 +181,11 @@ def main(no_view=False):
                     # 待機
                     time.sleep(cfg['capture_interval'])
                     continue
+                elif no_detected_count == cfg['notice_threshold']:
+                    # 検知対象の非検知が続いたらリセット
+                    last_label = ''
+                    image_list = []
+                    no_detected_count = 0
 
         except KeyboardInterrupt:
             log_level = 'info'
