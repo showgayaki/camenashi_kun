@@ -144,6 +144,9 @@ def main(no_view=False):
                     image_list.append(image_file_path)
                     # 画像添付メール送信
                     mail_result = send_mail(cfg, last_label, image_list)
+                    # メール送信ログ
+                    log_level = 'error' if 'Error' in mail_result else 'info'
+                    log.logging(log_level, 'Mail result: {}'.format(mail_result))
                     # 作成した画像削除
                     remove_images = []
                     for image in image_dir.iterdir():
@@ -153,13 +156,10 @@ def main(no_view=False):
                     # 初期化
                     last_label = ''
                     image_list = []
-                    # メール送信ログ
-                    log_level = 'error' if 'Error' in mail_result else 'info'
-                    log.logging(log_level, 'Mail result: {}'.format(mail_result))
                     # 検知後は一時停止して、連続通知回避
                     log.logging(log_level, 'Pause detecting for {} seconds'.format(cfg['pause_seconds']))
                     time.sleep(cfg['pause_seconds'])
-                    log.logging(log_level, 'Restart detecting.')
+                    log.logging(log_level, '=== Restart detecting ===')
 
                 # 検知回数の閾値に達したら画像を保存して通知
                 if detected_count == cfg['notice_threshold']:
@@ -190,24 +190,30 @@ def main(no_view=False):
         except KeyboardInterrupt:
             log_level = 'info'
             log.logging(log_level, 'Ctrl + C pressed...'.format(cfg['app_name']))
-            log.logging(log_level, '===== Finish {} ====='.format(cfg['app_name']))
+            log.logging(log_level, '===== Stop {} ====='.format(cfg['app_name']))
         except TerminatedExecption:
             log.logging(log_level, 'TerminatedExecption: stopped by systemd')
-            log.logging(log_level, '===== Finish {} ====='.format(cfg['app_name']))
+            log.logging(log_level, '===== Stop {} ====='.format(cfg['app_name']))
         except OSError as e:
             import traceback
             traceback.print_exc()
             log_level = 'error'
             log.logging(log_level, 'ERROR: {}'.format(e))
+            # エラー発生したら一時停止してから再起動
             log_level = 'info'
-            log.logging(log_level, 'Restart {}'.format(cfg['app_name']))
+            log.logging(log_level, 'Pause detecting for {} seconds'.format(cfg['pause_seconds']))
+            time.sleep(cfg['pause_seconds'])
+            log.logging(log_level, '*** Restart {} ***'.format(cfg['app_name']))
             # systemdで再起動
             raise e
         except Exception as e:
             log_level = 'error'
             log.logging(log_level, 'Unkown Error: {}'.format(e))
+            # エラー発生したら一時停止してから再起動
             log_level = 'info'
-            log.logging(log_level, 'Restart {}'.format(cfg['app_name']))
+            log.logging(log_level, 'Pause detecting for {} seconds'.format(cfg['pause_seconds']))
+            time.sleep(cfg['pause_seconds'])
+            log.logging(log_level, '*** Restart {} ***'.format(cfg['app_name']))
             # systemdで再起動
             raise e
     else:
@@ -218,7 +224,7 @@ def main(no_view=False):
         mail_result = send_mail(cfg)
         log_level = 'error' if 'Error' in mail_result else 'info'
         log.logging(log_level, 'Mail result: {}'.format(mail_result))
-        log.logging(log_level, '===== Finish {} ====='.format(cfg['app_name']))
+        log.logging(log_level, '===== Stop {} ====='.format(cfg['app_name']))
 
 
 def parse_opt():
