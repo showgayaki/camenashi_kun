@@ -30,7 +30,7 @@ def load_config(root_dir):
 def ping_to_target(try_count, target_ip):
     res = None
     log_level = 'info'
-    result = f'TryCount {try_count + 1}: Connect to {target_ip} is '
+    result = f'Ping Try Count {try_count + 1}: Connect to {target_ip} is '
     # ping実行
     try:
         res = ping(target_ip)
