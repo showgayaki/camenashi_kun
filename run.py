@@ -152,6 +152,7 @@ def main(no_view=False):
                     for image in image_dir.iterdir():
                         remove_images.append(str(image))
                         Path(image).unlink()
+                    log_level = 'info'
                     log.logging(log_level, 'Delete images: {}'.format(remove_images))
                     # 初期化
                     last_label = ''
@@ -183,6 +184,8 @@ def main(no_view=False):
                     continue
                 elif no_detected_count == cfg['notice_threshold']:
                     # 検知対象の非検知が続いたらリセット
+                    log_level = 'info'
+                    log.logging(log_level, 'Reset detecting count: {}'.format(label))
                     last_label = ''
                     image_list = []
                     no_detected_count = 0
