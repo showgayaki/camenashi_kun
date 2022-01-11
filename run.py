@@ -182,12 +182,14 @@ def main(no_view=False):
                     # 待機
                     time.sleep(cfg['capture_interval'])
                     continue
-                elif no_detected_count == cfg['notice_threshold']:
+                elif detected_count > 0 and no_detected_count == cfg['notice_threshold']:
                     # 検知対象の非検知が続いたらリセット
                     log_level = 'info'
-                    log.logging(log_level, 'Reset detecting count: {}'.format(label))
+                    log.logging(log_level, '=== Reset detecting count ===')
                     last_label = ''
                     image_list = []
+                    # カウンタリセット
+                    detected_count = 0
                     no_detected_count = 0
 
         except KeyboardInterrupt:
