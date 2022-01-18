@@ -128,9 +128,6 @@ def main(no_view=False):
                 else:
                     no_detected_count += 1
 
-                mail_flag = False
-                print('detected_count: ', detected_count)
-                print('no_detected_count: ', no_detected_count)
                 # メール通知フラグが立っていたらメール送信
                 if mail_flag:
                     # Falseに戻す

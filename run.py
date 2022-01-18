@@ -1,5 +1,4 @@
 import argparse
-from pathlib import Path
 from camenashi_kun.core import main
 
 
