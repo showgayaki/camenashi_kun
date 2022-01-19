@@ -121,13 +121,6 @@ def main(no_view=False):
         view_img = not no_view
         try:
             for label, frame, log_str in detect.run(weights=WEITHTS, imgsz=IMAGE_SIZE, source=camera_url, nosave=True, view_img=view_img):
-                # 検知対象リストにあるか判定
-                if label in cfg['detect_label']:
-                    detected_count += 1
-                    log.logging(log_level, log_str)
-                else:
-                    no_detected_count += 1
-
                 # メール通知フラグが立っていたらメール送信
                 if mail_flag:
                     # Falseに戻す
@@ -158,6 +151,14 @@ def main(no_view=False):
                     log.logging(log_level, 'Pause detecting for {} seconds'.format(cfg['pause_seconds']))
                     time.sleep(cfg['pause_seconds'])
                     log.logging(log_level, '=== Restart detecting ===')
+                    continue
+
+                # 検知対象リストにあるか判定
+                if label in cfg['detect_label']:
+                    detected_count += 1
+                    log.logging(log_level, log_str)
+                else:
+                    no_detected_count += 1
 
                 # 検知回数の閾値に達したら画像を保存して通知
                 if detected_count == cfg['notice_threshold']:
@@ -169,6 +170,7 @@ def main(no_view=False):
                     last_label = label
                     # カウンタリセット
                     detected_count = 0
+                    no_detected_count = 0
                     # 現在時刻取得
                     dt_now = datetime.datetime.now().strftime('%Y%m%d-%H%M%S')
                     # 画像保存
