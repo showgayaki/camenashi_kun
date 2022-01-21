@@ -155,6 +155,7 @@ def main(no_view=False):
 
                 # 検知対象リストにあるか判定
                 if label in cfg['detect_label']:
+                    no_detected_count = 0
                     detected_count += 1
                     log.logging(log_level, log_str)
                 else:
