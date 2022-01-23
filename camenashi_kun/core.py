@@ -14,6 +14,7 @@ import yolov5.detect as detect
 class TerminatedExecption(Exception):
     pass
 
+
 def raise_exception(*_):
     raise TerminatedExecption()
 
@@ -113,7 +114,6 @@ def main(no_view=False):
     # 疎通確認が取れたら実行
     if ping_result:
         detected_count = 0 # 検知回数
-        no_detected_count = 0 # 非検知回数
         mail_flag = False # メール送信フラグ
         image_list = [] # 保存した画像パスリスト
         last_label = '' # メール送信用の検知した物体のラベル
@@ -121,6 +121,11 @@ def main(no_view=False):
         view_img = not no_view
         try:
             for label, frame, log_str in detect.run(weights=WEITHTS, imgsz=IMAGE_SIZE, source=camera_url, nosave=True, view_img=view_img):
+                # 検知対象リストにあるか判定
+                if label in cfg['detect_label']:
+                    detected_count += 1
+                    log.logging(log_level, log_str)
+
                 # メール通知フラグが立っていたらメール送信
                 if mail_flag:
                     # Falseに戻す
@@ -150,16 +155,10 @@ def main(no_view=False):
                     # 検知後は一時停止して、連続通知回避
                     log.logging(log_level, 'Pause detecting for {} seconds'.format(cfg['pause_seconds']))
                     time.sleep(cfg['pause_seconds'])
+                    # カウンタリセット
+                    detected_count = 0
                     log.logging(log_level, '=== Restart detecting ===')
                     continue
-
-                # 検知対象リストにあるか判定
-                if label in cfg['detect_label']:
-                    no_detected_count = 0
-                    detected_count += 1
-                    log.logging(log_level, log_str)
-                else:
-                    no_detected_count += 1
 
                 # 検知回数の閾値に達したら画像を保存して通知
                 if detected_count == cfg['notice_threshold']:
@@ -171,7 +170,6 @@ def main(no_view=False):
                     last_label = label
                     # カウンタリセット
                     detected_count = 0
-                    no_detected_count = 0
                     # 現在時刻取得
                     dt_now = datetime.datetime.now().strftime('%Y%m%d-%H%M%S')
                     # 画像保存
@@ -182,17 +180,6 @@ def main(no_view=False):
                     # 待機
                     time.sleep(cfg['capture_interval'])
                     continue
-                elif no_detected_count == cfg['notice_threshold']:
-                    # 検知対象の非検知が続いたらリセット
-                    last_label = ''
-                    image_list = []
-                    # 検知(リ)スタート直後以外は、ログ出力
-                    if detected_count > 0:
-                        log_level = 'info'
-                        log.logging(log_level, '=== Reset detecting count ===')
-                    # カウンタリセット
-                    detected_count = 0
-                    no_detected_count = 0
 
         except KeyboardInterrupt:
             log_level = 'info'
