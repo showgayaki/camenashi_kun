@@ -217,6 +217,3 @@ def main(no_view=False):
         log_level = 'error' if 'Error' in mail_result else 'info'
         log.logging(log_level, 'Mail result: {}'.format(mail_result))
         log.logging(log_level, '===== Stop {} ====='.format(cfg['app_name']))
-        # アプリケーション終了
-        import sys
-        sys.exit()

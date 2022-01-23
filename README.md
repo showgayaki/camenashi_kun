@@ -52,14 +52,13 @@ Description=camenashi_kun
 [Service]
 Type=simple
 Restart=on-failure
+RestartSec=1200
 ExecStart=[path to]/camenashi_kun/run.sh --no-view
 
 [Install]
 WantedBy=multi-user.target
 ```
-
-「Restart」は以上終了した時(on-failure)のみにしておく。  
-alwaysにすると、アプリケーション内からの終了処理時(正常終了時)にも再起動されてしまうため。  
+RestartSec:再起動時の待機時間  
 
 `sudo systemctl enable camenashi_kun.service`  
 `sudo systemctl start camenashi_kun.service`  
