@@ -114,9 +114,8 @@ def main(no_view=False):
     # 疎通確認が取れたら実行
     if ping_result:
         detected_count = 0 # 検知回数
-        mail_flag = False # メール送信フラグ
         image_list = [] # 保存した画像パスリスト
-        last_label = '' # メール送信用の検知した物体のラベル
+        label = '' # メール送信用の検知した物体のラベル
         # ストリーミング表示するかは、引数から受け取る
         view_img = not no_view
         try:
@@ -126,48 +125,11 @@ def main(no_view=False):
                     detected_count += 1
                     log.logging(log_level, log_str)
 
-                # メール通知フラグが立っていたらメール送信
-                if mail_flag:
-                    # Falseに戻す
-                    mail_flag = False
-                    # 現在時刻取得
-                    dt_now = datetime.datetime.now().strftime('%Y%m%d-%H%M%S')
-                    # 画像保存
-                    image_dir, image_file_path = save_image(frame, dt_now)
-                    log_level = 'info'
-                    log.logging(log_level, 'Image saved: {}'.format(image_file_path))
-                    image_list.append(image_file_path)
-                    # 画像添付メール送信
-                    mail_result = send_mail(cfg, last_label, image_list)
-                    # メール送信ログ
-                    log_level = 'error' if 'Error' in mail_result else 'info'
-                    log.logging(log_level, 'Mail result: {}'.format(mail_result))
-                    # 作成した画像削除
-                    remove_images = []
-                    for image in image_dir.iterdir():
-                        remove_images.append(str(image))
-                        Path(image).unlink()
-                    log_level = 'info'
-                    log.logging(log_level, 'Delete images: {}'.format(remove_images))
-                    # 初期化
-                    last_label = ''
-                    image_list = []
-                    # 検知後は一時停止して、連続通知回避
-                    log.logging(log_level, 'Pause detecting for {} seconds'.format(cfg['pause_seconds']))
-                    time.sleep(cfg['pause_seconds'])
-                    # カウンタリセット
-                    detected_count = 0
-                    log.logging(log_level, '=== Restart detecting ===')
-                    continue
-
                 # 検知回数の閾値に達したら画像を保存して通知
                 if detected_count == cfg['notice_threshold']:
-                    mail_flag = True
                     # 検知ログ
                     log_level = 'info'
                     log.logging(log_level, 'Detected: {}'.format(label))
-                    # ラベルを取っておく
-                    last_label = label
                     # カウンタリセット
                     detected_count = 0
                     # 現在時刻取得
@@ -179,6 +141,32 @@ def main(no_view=False):
                     log.logging(log_level, 'Capture interval: {} seconds'.format(cfg['capture_interval']))
                     # 待機
                     time.sleep(cfg['capture_interval'])
+
+                    # 現在時刻取得
+                    dt_now = datetime.datetime.now().strftime('%Y%m%d-%H%M%S')
+                    # 画像保存
+                    image_dir, image_file_path = save_image(frame, dt_now)
+                    log.logging(log_level, 'Image saved: {}'.format(image_file_path))
+                    image_list.append(image_file_path)
+                    # 画像添付メール送信
+                    mail_result = send_mail(cfg, label, image_list)
+                    # メール送信ログ
+                    log_level = 'error' if 'Error' in mail_result else 'info'
+                    log.logging(log_level, 'Mail result: {}'.format(mail_result))
+                    # 作成した画像削除
+                    remove_images = []
+                    for image in image_dir.iterdir():
+                        remove_images.append(str(image))
+                        Path(image).unlink()
+                    log_level = 'info'
+                    log.logging(log_level, 'Delete images: {}'.format(remove_images))
+                    # 初期化
+                    label = ''
+                    image_list = []
+                    # 検知後は一時停止して、連続通知回避
+                    log.logging(log_level, 'Pause detecting for {} seconds'.format(cfg['pause_seconds']))
+                    time.sleep(cfg['pause_seconds'])
+                    log.logging(log_level, '=== Restart detecting ===')
                     continue
 
         except KeyboardInterrupt:
