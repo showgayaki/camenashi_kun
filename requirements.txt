@@ -16,6 +16,9 @@ tqdm>=4.41.0
 # https://github.com/pytorch/vision#installation
 torch==1.9.0
 torchvision==0.10.0
+# --find-links https://download.pytorch.org/whl/rocm4.2/torch_stable.html
+# torch
+# torchvision==0.11.2
 
 # Logging -------------------------------------
 tensorboard>=2.4.1

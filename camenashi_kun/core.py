@@ -67,8 +67,15 @@ def send_mail(cfg, label=None, image_list=None):
     if image_list:
         body = mail.build_body(label, image_list)
     else:
-        body = '[{}]と疎通確認が取れませんでした。<br>[{}]の状態を確認してください。'.format(
-            cfg['camera_info']['camera_ip'], cfg['camera_info']['camera_ip'])
+        body = ('[{}]と疎通確認が取れませんでした。<br>'
+        '[{}]の状態を確認してください。<br><br>'
+        '{}を終了します。<br>'
+        '問題解消後、{}を再開してください。').format(
+            cfg['camera_info']['camera_ip'],
+            cfg['camera_info']['camera_ip'],
+            cfg['app_name'],
+            cfg['app_name']
+        )
 
     body_dict = {
         'subject': '動体検知@{} from {}'.format(cfg['camera_info']['camera_ip'], cfg['app_name']),
@@ -110,6 +117,9 @@ def main(no_view=False):
             log.logging(log_level, 'Start streaming and detecting.')
             ping_result = True
             break
+        else:
+            # ping返って来なかったら待機して再度ping
+            time.sleep(5)
 
     # 疎通確認が取れたら実行
     if ping_result:
@@ -207,3 +217,6 @@ def main(no_view=False):
         log_level = 'error' if 'Error' in mail_result else 'info'
         log.logging(log_level, 'Mail result: {}'.format(mail_result))
         log.logging(log_level, '===== Stop {} ====='.format(cfg['app_name']))
+        # アプリケーション終了
+        import sys
+        sys.exit()
