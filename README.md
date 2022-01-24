@@ -1,4 +1,4 @@
-# camknashi_kun
+# camenashi_kun
 
 ## インストール
 ### 準備
@@ -28,11 +28,12 @@ MAIL_TO=[email address]
 MAIL_CC=[email address]
 
 CAMERA_IP=[local ip address]
-CAMERA_USER=[camera user name]
+CAMERA_USER=[camera username]
 CAMERA_PASS=[camera password]
 
 NOTICE_THRESHOLD=20
 DETECT_LABEL=cat
+CAPTURE_INTERVAL=90
 PAUSE_SECONDS=60
 ```
 
@@ -41,6 +42,9 @@ PAUSE_SECONDS=60
 仮想環境に入っていなくてもOK。  
 `bash run.sh`  
 `zsh run.sh`  
+
+### Options
+`--no-view`：ストリーミングを表示しない。サービスで起動する際などに利用。  
 
 ## サービス登録
 `chmod 755 run.sh`  
@@ -58,7 +62,8 @@ ExecStart=[path to]/camenashi_kun/run.sh --no-view
 [Install]
 WantedBy=multi-user.target
 ```
-RestartSec:再起動時の待機時間  
+RestartSec:再起動時の待機時間(秒)  
+RestartSecを設定していないと、pingでの疎通確認が取れない時に毎秒のようにメール送信される。  
 
 `sudo systemctl enable camenashi_kun.service`  
 `sudo systemctl start camenashi_kun.service`  
