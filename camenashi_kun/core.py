@@ -127,6 +127,7 @@ def main(no_view=False):
         image_list = [] # 保存した画像Pathリスト
         last_label = '' # メール送信用の検知した物体のラベル
         label = '' # メール送信用の検知した物体のラベル
+        no_detected_start = 0 # 非検知秒数のカウント用
         # ストリーミング表示するかは、引数から受け取る
         view_img = not no_view
         try:
@@ -134,7 +135,22 @@ def main(no_view=False):
                 # 検知対象リストにあるか判定
                 if label in cfg['detect_label']:
                     detected_count += 1
+                    # ログ文言に検知回数を追記
+                    log_str += ' Detected count: {}'.format(detected_count)
                     log.logging(log_level, log_str)
+                elif no_detected_start == 0:
+                    # 非検知になったらタイマースタート
+                    no_detected_start = time.perf_counter()
+                elif detected_count > 0:
+                    # 非検知秒数カウント
+                    past_time = time.perf_counter() - no_detected_start
+                    # 非検知秒数閾値に達したらリセット
+                    if past_time > cfg['pause_seconds']:
+                        log_level = 'info'
+                        log.logging(log_level, 'No detected for {} seconds.'.format(cfg['pause_seconds']))
+                        log.logging(log_level, '=== Reset detected count. ===')
+                        detected_count = 0
+                        no_detected_start = 0
 
                 # 画像PathリストにPathが入っていたら、メール通知
                 if len(image_list) > 0:
