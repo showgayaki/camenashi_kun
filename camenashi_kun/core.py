@@ -128,30 +128,11 @@ def main(no_view=False):
         last_label = '' # メール送信用の検知した物体のラベル
         label = '' # メール送信用の検知した物体のラベル
         no_detected_start = 0 # 非検知秒数のカウント用
+        past_time = 0
         # ストリーミング表示するかは、引数から受け取る
         view_img = not no_view
         try:
             for label, frame, log_str in detect.run(weights=WEITHTS, imgsz=IMAGE_SIZE, source=camera_url, nosave=True, view_img=view_img):
-                # 検知対象リストにあるか判定
-                if label in cfg['detect_label']:
-                    detected_count += 1
-                    # ログ文言に検知回数を追記
-                    log_str += ' Detected count: {}'.format(detected_count)
-                    log.logging(log_level, log_str)
-                elif no_detected_start == 0:
-                    # 非検知になったらタイマースタート
-                    no_detected_start = time.perf_counter()
-                elif detected_count > 0:
-                    # 非検知秒数カウント
-                    past_time = time.perf_counter() - no_detected_start
-                    # 非検知秒数閾値に達したらリセット
-                    if past_time > cfg['pause_seconds']:
-                        log_level = 'info'
-                        log.logging(log_level, 'No detected for {} seconds.'.format(cfg['pause_seconds']))
-                        log.logging(log_level, '=== Reset detected count. ===')
-                        detected_count = 0
-                        no_detected_start = 0
-
                 # 画像PathリストにPathが入っていたら、メール通知
                 if len(image_list) > 0:
                     # 現在時刻取得
@@ -181,8 +162,30 @@ def main(no_view=False):
                     time.sleep(cfg['pause_seconds'])
                     # カウンタリセット
                     detected_count = 0
+                    no_detected_start = 0
                     log.logging(log_level, '=== Restart detecting ===')
                     continue
+
+                # 検知対象リストにあるか判定
+                if label in cfg['detect_label']:
+                    detected_count += 1
+                    no_detected_start == 0
+                    # ログ文言に検知回数を追記
+                    log_str += ' Detected count: {}'.format(detected_count)
+                    log.logging(log_level, log_str)
+                elif no_detected_start == 0:
+                    # 非検知になったらタイマースタート
+                    no_detected_start = time.perf_counter()
+                elif detected_count > 0:
+                    # 非検知秒数カウント
+                    past_time = time.perf_counter() - no_detected_start
+                    # 非検知秒数閾値に達したらリセット
+                    if past_time > cfg['pause_seconds']:
+                        log_level = 'info'
+                        log.logging(log_level, 'No detected for {} seconds.'.format(cfg['pause_seconds']))
+                        log.logging(log_level, '=== Reset detected count. ===')
+                        detected_count = 0
+                        no_detected_start = 0
 
                 # 検知回数の閾値に達したら画像を保存する
                 # 送信する画像の2枚目はcapture_interval後のキャプチャを取得したいため、ここではメール送信まで行わない
