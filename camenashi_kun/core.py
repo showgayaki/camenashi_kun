@@ -128,7 +128,7 @@ def main(no_view=False):
         last_label = '' # メール送信用の検知した物体のラベル
         label = '' # メール送信用の検知した物体のラベル
         no_detected_start = 0 # 非検知秒数のカウント用
-        past_time = 0
+        past_time = 0 # 非検知経過時間
         # ストリーミング表示するかは、引数から受け取る
         view_img = not no_view
         try:
@@ -160,16 +160,18 @@ def main(no_view=False):
                     # 検知後は一時停止して、連続通知回避
                     log.logging(log_level, 'Pause detecting for {} seconds'.format(cfg['pause_seconds']))
                     time.sleep(cfg['pause_seconds'])
-                    # カウンタリセット
+                    # カウンタ・タイマーリセット
                     detected_count = 0
                     no_detected_start = 0
+                    past_time = 0
                     log.logging(log_level, '=== Restart detecting ===')
                     continue
 
                 # 検知対象リストにあるか判定
                 if label in cfg['detect_label']:
                     detected_count += 1
-                    no_detected_start == 0
+                    # 非検知タイマーリセット
+                    no_detected_start = 0
                     # ログ文言に検知回数を追記
                     log_str += ' Detected count: {}'.format(detected_count)
                     log.logging(log_level, log_str)
@@ -186,6 +188,7 @@ def main(no_view=False):
                         log.logging(log_level, '=== Reset detected count. ===')
                         detected_count = 0
                         no_detected_start = 0
+                        past_time = 0
 
                 # 検知回数の閾値に達したら画像を保存する
                 # 送信する画像の2枚目はcapture_interval後のキャプチャを取得したいため、ここではメール送信まで行わない
