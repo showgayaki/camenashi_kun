@@ -20,6 +20,10 @@ class Config:
                 'mail_to': os.environ.get('MAIL_TO'),
                 'mail_cc': os.environ.get('MAIL_CC')
             },
+            'line_info': {
+                'api_url': os.environ.get('LINE_API_URL'),
+                'access_token': os.environ.get('LINE_ACCESS_TOKEN'),
+            },
             'camera_info': {
                 'camera_ip': os.environ.get('CAMERA_IP'),
                 'camera_user': os.environ.get('CAMERA_USER'),

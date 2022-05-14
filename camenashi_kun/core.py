@@ -7,6 +7,7 @@ from ping3 import ping
 from pathlib import Path
 from .config import Config
 from .logger import Logger
+from .line_notify import LineNotify
 from .mail import Mail
 import yolov5.detect as detect
 
@@ -54,9 +55,22 @@ def save_image(frame, file_name):
 
     # 画像保存パス、stringじゃないといけない
     image_file_path = str(Path.joinpath(image_dir, f'{file_name}.png'))
+    # 上下左右に白の余白を追加
+    frame = cv2.copyMakeBorder(frame, 10, 10, 10, 10, cv2.BORDER_CONSTANT, value=[255, 255, 255])
     # 画像保存
     cv2.imwrite(image_file_path, frame)
     return image_dir, image_file_path
+
+
+def post_line(line_info, image_file_path, label):
+    bot = LineNotify(line_info['api_url'], line_info['access_token'])
+    payload = {
+        'message': f'\n{label}を動体検知しました。',
+        'stickerPackageId': None,
+        'stickerId': None
+    }
+    image = image_file_path
+    return bot.send_message(payload, image)
 
 
 def send_mail(cfg, label=None, image_list=None):
@@ -142,11 +156,26 @@ def main(no_view=False):
                     log_level = 'info'
                     log.logging(log_level, 'Image saved: {}'.format(image_file_path))
                     image_list.append(image_file_path)
-                    # 画像添付メール送信
-                    mail_result = send_mail(cfg, last_label, image_list)
-                    # メール送信ログ
-                    log_level = 'error' if 'Error' in mail_result else 'info'
-                    log.logging(log_level, 'Mail result: {}'.format(mail_result))
+
+                    # 画像一覧取得
+                    image_list = [str(image) for image in image_dir.glob('*.png')]
+                    # 画像を連結
+                    image_concat = []
+                    for image in image_list:
+                        image_concat.append(cv2.imread(image))
+                    # image_concat = cv2.hconcat(image_concat)
+                    image_concat = cv2.vconcat(image_concat)
+                    image_file_path = image_file_path.replace('.png', '_concat.png')
+                    # 連結した画像保存
+                    cv2.imwrite(image_file_path, image_concat)
+                    log.logging(log_level, 'Concat Image saved: {}'.format(image_file_path))
+
+                    # LINEに通知
+                    log.logging(log_level, 'Start post to LINE.')
+                    post_result = post_line(cfg['line_info'], image_file_path, last_label)
+                    log_level = 'error' if 'Error' in post_result else 'info'
+                    log.logging(log_level, 'LINE result: {}'.format(post_result))
+
                     # 作成した画像削除
                     remove_images = []
                     for image in image_dir.iterdir():

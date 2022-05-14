@@ -35,6 +35,9 @@ NOTICE_THRESHOLD=20
 DETECT_LABEL=cat
 CAPTURE_INTERVAL=90
 PAUSE_SECONDS=60
+
+LINE_API_URL=https://notify-api.line.me/api/notify
+LINE_ACCESS_TOKEN=
 ```
 
 ## 実行
