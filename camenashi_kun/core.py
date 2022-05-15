@@ -46,17 +46,22 @@ def ping_to_target(try_count, target_ip):
     return log_level, result
 
 
-def save_image(frame, file_name):
+def save_image(frame, file_name, concatenated=False):
     dir_name = Path(__file__).resolve().parent.name
     image_dir = Path.joinpath(Path(__file__).resolve().parents[1], f'{dir_name}/images')
     # ディレクトリなかったら作成
     if not image_dir.is_dir():
         Path.mkdir(image_dir)
 
-    # 画像保存パス、stringじゃないといけない
-    image_file_path = str(Path.joinpath(image_dir, f'{file_name}.png'))
-    # 上下左右に白の余白を追加
-    frame = cv2.copyMakeBorder(frame, 10, 10, 10, 10, cv2.BORDER_CONSTANT, value=[255, 255, 255])
+    if concatenated:
+        # 画像保存パス、stringじゃないといけない
+        image_file_path = str(Path.joinpath(image_dir, f'{file_name}_concatenated.png'))
+    else:
+        # 画像保存パス、stringじゃないといけない
+        image_file_path = str(Path.joinpath(image_dir, f'{file_name}.png'))
+        # 上下左右に白の余白を追加
+        frame = cv2.copyMakeBorder(frame, 10, 10, 10, 10, cv2.BORDER_CONSTANT, value=[255, 255, 255])
+
     # 画像保存
     cv2.imwrite(image_file_path, frame)
     return image_dir, image_file_path
@@ -150,25 +155,27 @@ def main(no_view=False):
                 # 画像PathリストにPathが入っていたら、メール通知
                 if len(image_list) > 0:
                     # 現在時刻取得
-                    dt_now = datetime.datetime.now().strftime('%Y%m%d-%H%M%S')
+                    dt_now = datetime.datetime.now()
+                    file_name = dt_now.strftime('%Y%m%d-%H%M%S')
                     # 画像保存
-                    image_dir, image_file_path = save_image(frame, dt_now)
+                    image_dir, image_file_path = save_image(frame, file_name, False)
                     log_level = 'info'
                     log.logging(log_level, 'Image saved: {}'.format(image_file_path))
                     image_list.append(image_file_path)
 
-                    # 画像一覧取得
+                    # 画像一覧取得(画像連結が逆になったことがあったのでソートしておく)
                     image_list = [str(image) for image in image_dir.glob('*.png')]
+                    image_list.sort()
+                    log.logging(log_level, 'Concatenate Images: {}'.format(image_list))
                     # 画像を連結
-                    image_concat = []
-                    for image in image_list:
-                        image_concat.append(cv2.imread(image))
-                    # image_concat = cv2.hconcat(image_concat)
-                    image_concat = cv2.vconcat(image_concat)
-                    image_file_path = image_file_path.replace('.png', '_concat.png')
+                    concatenate_list = [cv2.imread(image) for image in image_list]
+                    concatenated_iamge = cv2.vconcat(concatenate_list)
+                    # ファイル名の時間箇所が被らないように1秒加算
+                    dt_now = dt_now + datetime.timedelta(seconds=1)
+                    file_name = dt_now.strftime('%Y%m%d-%H%M%S')
                     # 連結した画像保存
-                    cv2.imwrite(image_file_path, image_concat)
-                    log.logging(log_level, 'Concat Image saved: {}'.format(image_file_path))
+                    _, image_file_path = save_image(concatenated_iamge, file_name, True)
+                    log.logging(log_level, 'Concatenated Image saved: {}'.format(image_file_path))
 
                     # LINEに通知
                     log.logging(log_level, 'Start post to LINE.')
@@ -230,9 +237,10 @@ def main(no_view=False):
                     # カウンタリセット
                     detected_count = 0
                     # 現在時刻取得
-                    dt_now = datetime.datetime.now().strftime('%Y%m%d-%H%M%S')
+                    dt_now = datetime.datetime.now()
+                    file_name = dt_now.strftime('%Y%m%d-%H%M%S')
                     # 画像保存
-                    _, image_file_path = save_image(frame, dt_now)
+                    _, image_file_path = save_image(frame, file_name, False)
                     image_list.append(image_file_path)
                     log.logging(log_level, 'Image saved: {}'.format(image_file_path))
                     log.logging(log_level, 'Capture interval: {} seconds'.format(cfg['capture_interval']))
