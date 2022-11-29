@@ -8,7 +8,6 @@ from pathlib import Path
 from .config import Config
 from .logger import Logger
 from .line_notify import LineNotify
-from .mail import Mail
 import yolov5.detect as detect
 
 
@@ -67,42 +66,14 @@ def save_image(frame, file_name, concatenated=False):
     return image_dir, image_file_path
 
 
-def post_line(line_info, image_file_path, label):
+def post_line(line_info, image_file_path, msg):
     bot = LineNotify(line_info['api_url'], line_info['access_token'])
     payload = {
-        'message': f'\n{label}を動体検知しました。',
+        'message': msg,
         'stickerPackageId': None,
         'stickerId': None
     }
-    image = image_file_path
-    return bot.send_message(payload, image)
-
-
-def send_mail(cfg, label=None, image_list=None):
-    mail_info = cfg['mail_info']
-    mail = Mail(mail_info)
-
-    # メール本文作成
-    if image_list:
-        body = mail.build_body(label, image_list)
-    else:
-        body = ('[{}]と疎通確認が取れませんでした。<br>'
-        '[{}]の状態を確認してください。<br><br>'
-        '{}を終了します。<br>'
-        '問題解消後、{}を再開してください。').format(
-            cfg['camera_info']['camera_ip'],
-            cfg['camera_info']['camera_ip'],
-            cfg['app_name'],
-            cfg['app_name']
-        )
-
-    body_dict = {
-        'subject': '動体検知@{} from {}'.format(cfg['camera_info']['camera_ip'], cfg['app_name']),
-        'body': body
-    }
-    msg = mail.create_message(body_dict, image_list)
-    mail_result = mail.send_mail(msg)
-    return mail_result
+    return bot.send_message(payload, image_file_path)
 
 
 def main(no_view=False):
@@ -142,12 +113,12 @@ def main(no_view=False):
 
     # 疎通確認が取れたら実行
     if ping_result:
-        detected_count = 0 # 検知回数
-        image_list = [] # 保存した画像Pathリスト
-        last_label = '' # メール送信用の検知した物体のラベル
-        label = '' # メール送信用の検知した物体のラベル
-        no_detected_start = 0 # 非検知秒数のカウント用
-        past_time = 0 # 非検知経過時間
+        detected_count = 0  # 検知回数
+        image_list = []  # 保存した画像Pathリスト
+        last_label = ''  # メール送信用の検知した物体のラベル
+        label = ''  # メール送信用の検知した物体のラベル
+        no_detected_start = 0  # 非検知秒数のカウント用
+        past_time = 0  # 非検知経過時間
         # ストリーミング表示するかは、引数から受け取る
         view_img = not no_view
         try:
@@ -179,7 +150,7 @@ def main(no_view=False):
 
                     # LINEに通知
                     log.logging(log_level, 'Start post to LINE.')
-                    post_result = post_line(cfg['line_info'], image_file_path, last_label)
+                    post_result = post_line(cfg['line_info'], image_file_path, f'\n{last_label}を動体検知しました。')
                     log_level = 'error' if 'Error' in post_result else 'info'
                     log.logging(log_level, 'LINE result: {}'.format(post_result))
 
@@ -280,9 +251,13 @@ def main(no_view=False):
     else:
         log_level = 'error'
         log.logging(log_level, '[{}] is NOT responding. Please check device.'
-        .format(cfg['camera_info']['camera_ip']))
-        # エラーメール送信
-        mail_result = send_mail(cfg)
-        log_level = 'error' if 'Error' in mail_result else 'info'
-        log.logging(log_level, 'Mail result: {}'.format(mail_result))
+                    .format(cfg['camera_info']['camera_ip']))
+        # エラーをLINEに送信
+        post_result = post_line(
+            cfg['line_info'],
+            None,
+            '\n★ping NG\n{}は気絶しているみたいです。'.format(cfg['camera_info']['camera_ip'])
+        )
+        log_level = 'error' if 'Error' in post_result else 'info'
+        log.logging(log_level, 'LINE result: {}'.format(post_result))
         log.logging(log_level, '===== Stop {} ====='.format(cfg['app_name']))
