@@ -3,6 +3,7 @@ import datetime
 import socket
 import signal
 import cv2
+import numpy as np
 from ping3 import ping
 from pathlib import Path
 from .config import Config
@@ -113,17 +114,24 @@ def main(no_view=False):
 
     # 疎通確認が取れたら実行
     if ping_result:
+        BLACK_COLOR_CODE = 0
         detected_count = 0  # 検知回数
         image_list = []  # 保存した画像Pathリスト
         last_label = ''  # メール送信用の検知した物体のラベル
         label = ''  # メール送信用の検知した物体のラベル
         no_detected_start = 0  # 非検知秒数のカウント用
         past_time = 0  # 非検知経過時間
-        # ストリーミング表示するかは、引数から受け取る
-        view_img = not no_view
+        view_img = not no_view  # ストリーミング表示するかは、引数から受け取る
+        is_first_loop = True  # ループの最初かどうかフラグ
+        is_notified_screen_all_black = False  # 映像が真っ暗になったことを通知したかフラグ
         try:
             for label, frame, log_str in detect.run(weights=WEITHTS, imgsz=IMAGE_SIZE, source=camera_url, nosave=True, view_img=view_img):
-                # 画像PathリストにPathが入っていたら、メール通知
+                # ループの最初で解像度を取得しておく
+                if is_first_loop:
+                    frame_height, frame_width, _ = frame.shape
+                    is_first_loop = False
+
+                # 画像PathリストにPathが入っていたら、LINE通知
                 if len(image_list) > 0:
                     # 現在時刻取得
                     dt_now = datetime.datetime.now()
@@ -218,6 +226,29 @@ def main(no_view=False):
                     # 待機
                     time.sleep(cfg['capture_interval'])
                     continue
+
+                # 4角が真っ黒なら映像取得できていないはず。LINEで通知する。
+                if (np.all(frame[0][0] == BLACK_COLOR_CODE) and np.all(frame[0][frame_width - 1] == BLACK_COLOR_CODE)
+                        and np.all(frame[frame_height - 1][frame_width - 1] == BLACK_COLOR_CODE) and np.all(frame[frame_height - 1][0] == BLACK_COLOR_CODE)):
+                    if is_notified_screen_all_black:
+                        continue
+                    else:
+                        # LINEに通知
+                        log.logging(log_level, 'Start post to LINE.')
+                        # 現在時刻取得
+                        dt_now = datetime.datetime.now()
+                        file_name = dt_now.strftime('%Y%m%d-%H%M%S')
+                        # 画像保存
+                        _, image_file_path = save_image(frame, file_name, False)
+                        log_level = 'info'
+                        log.logging(log_level, 'Image saved: {}'.format(image_file_path))
+                        msg = '\n映像が真っ暗になってるっぽい。\nカメラをリブートした方がいいかも。'
+                        post_result = post_line(cfg['line_info'], image_file_path, msg)
+                        log_level = 'error' if 'Error' in post_result else 'info'
+                        log.logging(log_level, 'LINE result: {}'.format(post_result))
+                        # 画像削除
+                        Path(image_file_path).unlink()
+                        is_notified_screen_all_black = True
 
         except KeyboardInterrupt:
             log_level = 'info'
