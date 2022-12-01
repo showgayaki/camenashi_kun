@@ -12,14 +12,6 @@ class Config:
         load_dotenv(dotenv_path)
         conf = {
             'app_name': 'Camenashi Kun',
-            'mail_info': {
-                'smtp_server': os.environ.get('SMTP_SERVER'),
-                'smtp_port': os.environ.get('SMTP_PORT'),
-                'smtp_user': os.environ.get('SMTP_USER'),
-                'smtp_pass': os.environ.get('SMTP_PASS'),
-                'mail_to': os.environ.get('MAIL_TO'),
-                'mail_cc': os.environ.get('MAIL_CC')
-            },
             'line_info': {
                 'api_url': os.environ.get('LINE_API_URL'),
                 'access_token': os.environ.get('LINE_ACCESS_TOKEN'),
@@ -34,5 +26,6 @@ class Config:
             # 'detect_list': set(os.environ.get('DETECT_LIST').split(','))
             'capture_interval': int(os.environ.get('CAPTURE_INTERVAL')),
             'pause_seconds': int(os.environ.get('PAUSE_SECONDS')),
+            'black_screen_seconds': int(os.environ.get('BLACK_SCREEN_SECONDS')),
         }
         return conf
