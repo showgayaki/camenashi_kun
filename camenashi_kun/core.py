@@ -255,10 +255,17 @@ def main(no_view=False):
                         log.logging(log_level, 'LINE result: {}'.format(post_result))
                         # 画像削除
                         Path(image_file_path).unlink()
-                        # 初期化
+                        # 通知しました
                         is_notified_screen_all_black = True
+                        # 初期化
                         black_screen_start = 0
                         black_screen_elapsed_seconds = 0
+                elif is_notified_screen_all_black:
+                    log.logging('info', 'Recovered from screen black.')
+                    # 4角真っ黒kから回復したら初期化
+                    is_notified_screen_all_black = False
+                    black_screen_start = 0
+                    black_screen_elapsed_seconds = 0
 
         except KeyboardInterrupt:
             log.logging('info', 'Ctrl + C pressed...'.format(cfg['app_name']))
