@@ -249,7 +249,7 @@ def main(no_view=False):
                         _, image_file_path = save_image(frame, file_name, False)
                         log.logging('info', 'Image saved: {}'.format(image_file_path))
                         # LINEに通知
-                        msg = '\n映像が真っ暗になってから{}分経過しました。\nカメラをリブートした方がいいかもしれません。'.format(black_screen_elapsed_minutes)
+                        msg = '\n映像が真っ暗になってから{:.0f}分経過しました。\nカメラをリブートした方がいいかもしれません。'.format(black_screen_elapsed_minutes)
                         post_result = post_line(cfg['line_info'], image_file_path, msg)
                         log_level = 'error' if 'Error' in post_result else 'info'
                         log.logging(log_level, 'LINE result: {}'.format(post_result))
