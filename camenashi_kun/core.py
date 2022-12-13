@@ -229,14 +229,14 @@ def main(no_view=False):
                     # 真っ黒画面になってからの経過時間を計測
                     if black_screen_start == 0:
                         log.logging('error', 'Screen has gone BLACK.')
-                        black_screen_start = time.perf_counter()
+                        is_notified_screen_all_black = False  # 通知フラグ初期化
+                        black_screen_start = time.perf_counter()  # 真っ黒スタート時間取得
                         continue
                     else:
                         black_screen_elapsed_seconds = time.perf_counter() - black_screen_start
 
-                    if is_notified_screen_all_black:
-                        continue
-                    elif black_screen_elapsed_seconds > cfg['black_screen_seconds']:
+                    # 通知していなくて、指定時間経過していたら通知
+                    if not is_notified_screen_all_black and black_screen_elapsed_seconds > cfg['black_screen_seconds']:
                         # 秒を分に
                         black_screen_elapsed_minutes = int(cfg['black_screen_seconds'] / 60)
                         log.logging('error', '{} minutes have passed since the screen went black.'.format(black_screen_elapsed_minutes))
@@ -257,12 +257,11 @@ def main(no_view=False):
                         Path(image_file_path).unlink()
                         # 通知しました
                         is_notified_screen_all_black = True
-                        # 初期化
-                        black_screen_start = 0
-                        black_screen_elapsed_seconds = 0
+                    else:
+                        continue
                 elif is_notified_screen_all_black:
                     log.logging('info', 'Recovered from screen black.')
-                    # 4角真っ黒kから回復したら初期化
+                    # 4角真っ黒から回復したら初期化
                     is_notified_screen_all_black = False
                     black_screen_start = 0
                     black_screen_elapsed_seconds = 0
