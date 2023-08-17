@@ -10,8 +10,6 @@ Usage:
                                                              path/*.jpg  # glob
                                                              'https://youtu.be/Zgi9g1ksQHc'  # YouTube
                                                              'rtsp://example.com/media.mp4'  # RTSP, RTMP, HTTP stream
-
-python detect.py --source 'rtsp://kenjikanke:unkomorimori@192.168.1.107:554/stream2' --weight yolov5s.pt --nosave
 """
 
 import argparse

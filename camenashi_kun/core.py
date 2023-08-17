@@ -123,6 +123,7 @@ def main(no_view=False):
         view_img = not no_view  # ストリーミング表示するかは、引数から受け取る
         is_first_loop = True  # ループの最初かどうかフラグ
         black_screen_start = 0  # 真っ黒画面になった時間
+        black_screen_elapsed_seconds = 0  # 真っ黒画面の経過時間
         is_notified_screen_all_black = False  # 映像が真っ暗になったことを通知したかフラグ
         try:
             for label, frame, log_str in detect.run(weights=WEITHTS, imgsz=IMAGE_SIZE, source=camera_url, nosave=True, view_img=view_img):
@@ -259,15 +260,16 @@ def main(no_view=False):
                         is_notified_screen_all_black = True
                     else:
                         continue
-                elif is_notified_screen_all_black:
+                elif black_screen_elapsed_seconds > 0:
+                    # 4角真っ黒から回復した場合
                     log.logging('info', 'Recovered from screen black.')
-                    # 4角真っ黒から回復したら初期化
+                    # 初期化
                     is_notified_screen_all_black = False
                     black_screen_start = 0
                     black_screen_elapsed_seconds = 0
 
         except KeyboardInterrupt:
-            log.logging('info', 'Ctrl + C pressed...'.format(cfg['app_name']))
+            log.logging('info', 'Ctrl + C pressed...')
             log.logging('info', '===== Stop {} ====='.format(cfg['app_name']))
         except TerminatedExecption:
             log.logging('info', 'TerminatedExecption: stopped by systemd')
