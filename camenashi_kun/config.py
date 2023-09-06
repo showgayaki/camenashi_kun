@@ -13,18 +13,19 @@ class Config:
         conf = {
             'app_name': 'Camenashi Kun',
             'line_info': {
-                'api_url': os.environ.get('LINE_API_URL'),
                 'access_token': os.environ.get('LINE_ACCESS_TOKEN'),
+                'to': os.environ.get('TO'),
             },
             'camera_info': {
                 'camera_ip': os.environ.get('CAMERA_IP'),
                 'camera_user': os.environ.get('CAMERA_USER'),
                 'camera_pass': os.environ.get('CAMERA_PASS')
             },
+            's3_bucket_name': os.environ.get('S3_BUCKET_NAME'),
+            's3_expires_in': int(os.environ.get('S3_EXPIRES_IN')),
             'notice_threshold': int(os.environ.get('NOTICE_THRESHOLD')),
+            'threshold_no_detected_seconds': int(os.environ.get('THRESHOLD_NO_DETECTED_SECONDS')),
             'detect_label': set(os.environ.get('DETECT_LABEL').split(',')),
-            # 'detect_list': set(os.environ.get('DETECT_LIST').split(','))
-            'capture_interval': int(os.environ.get('CAPTURE_INTERVAL')),
             'pause_seconds': int(os.environ.get('PAUSE_SECONDS')),
             'black_screen_seconds': int(os.environ.get('BLACK_SCREEN_SECONDS')),
         }

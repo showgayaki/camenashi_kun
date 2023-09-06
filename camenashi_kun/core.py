@@ -8,7 +8,8 @@ from ping3 import ping
 from pathlib import Path
 from .config import Config
 from .logger import Logger
-from .line_notify import LineNotify
+from .line_messaging_api import LineMessagingApi
+from .aws import S3
 import yolov5.detect as detect
 
 
@@ -46,35 +47,37 @@ def ping_to_target(try_count, target_ip):
     return log_level, result
 
 
-def save_image(frame, file_name, concatenated=False):
-    dir_name = Path(__file__).resolve().parent.name
-    image_dir = Path.joinpath(Path(__file__).resolve().parents[1], f'{dir_name}/images')
+def save_image(frame, file_name):
+    image_dir = Path.joinpath(Path(__file__).resolve().parent, 'images')
     # ディレクトリなかったら作成
     if not image_dir.is_dir():
         Path.mkdir(image_dir)
 
-    if concatenated:
-        # 画像保存パス、stringじゃないといけない
-        image_file_path = str(Path.joinpath(image_dir, f'{file_name}_concatenated.png'))
-    else:
-        # 画像保存パス、stringじゃないといけない
-        image_file_path = str(Path.joinpath(image_dir, f'{file_name}.png'))
-        # 上下左右に白の余白を追加
-        frame = cv2.copyMakeBorder(frame, 10, 10, 10, 10, cv2.BORDER_CONSTANT, value=[255, 255, 255])
-
+    # 画像保存パス、stringじゃないといけない
+    image_file_path = Path.joinpath(image_dir, f'{file_name}.png')
     # 画像保存
-    cv2.imwrite(image_file_path, frame)
+    cv2.imwrite(str(image_file_path), frame)
     return image_dir, image_file_path
 
 
-def post_line(line_info, image_file_path, msg):
-    bot = LineNotify(line_info['api_url'], line_info['access_token'])
-    payload = {
-        'message': msg,
-        'stickerPackageId': None,
-        'stickerId': None
+def post_line(line_info, label, urls):
+    message_dict = {
+        'messages': [
+            {
+                'type': 'text',
+                'text': f'{label}を動体検知しました'
+            },
+            {
+                'type': 'video',
+                'originalContentUrl': urls['video'],
+                'previewImageUrl': urls['image'],
+            }
+        ]
     }
-    return bot.send_message(payload, image_file_path)
+
+    bot = LineMessagingApi(line_info['access_token'])
+    message_result = bot.send_message(line_info['to'], message_dict)
+    return message_result
 
 
 def main(no_view=False):
@@ -115,11 +118,15 @@ def main(no_view=False):
     if ping_result:
         BLACK_COLOR_CODE = 0
         detected_count = 0  # 検知回数
-        image_list = []  # 保存した画像Pathリスト
         last_label = ''  # メール送信用の検知した物体のラベル
-        label = ''  # メール送信用の検知した物体のラベル
+        image_dir = ''  # キャプチャ画像保存用ディレクトリ
+        image_file_path = ''  # キャプチャ画像パス
+        video_dir = ''  # 録画映像保存用ディレクトリ
+        video_file_path = ''  # 録画映像ファイル
+        video_writer = None  # opencvのvideo writer
+        fps = 10  # 録画映像のFPS
         no_detected_start = 0  # 非検知秒数のカウント用
-        elapsed_time = 0  # 非検知経過時間
+        no_detected_elapsed_time = 0  # 非検知経過時間
         view_img = not no_view  # ストリーミング表示するかは、引数から受け取る
         is_first_loop = True  # ループの最初かどうかフラグ
         black_screen_start = 0  # 真っ黒画面になった時間
@@ -132,96 +139,114 @@ def main(no_view=False):
                     frame_height, frame_width, _ = frame.shape
                     is_first_loop = False
 
-                # 画像PathリストにPathが入っていたら、LINE通知
-                if len(image_list) > 0:
-                    # 現在時刻取得
-                    dt_now = datetime.datetime.now()
-                    file_name = dt_now.strftime('%Y%m%d-%H%M%S')
-                    # 画像保存
-                    image_dir, image_file_path = save_image(frame, file_name, False)
-                    log.logging('info', 'Image saved: {}'.format(image_file_path))
-                    image_list.append(image_file_path)
-
-                    # 画像一覧取得(画像連結が逆になったことがあったのでソートしておく)
-                    image_list = [str(image) for image in image_dir.glob('*.png')]
-                    image_list.sort()
-                    log.logging('info', 'Concatenate Images: {}'.format(image_list))
-                    # 画像を連結
-                    concatenate_list = [cv2.imread(image) for image in image_list]
-                    concatenated_image = cv2.vconcat(concatenate_list)
-                    # ファイル名の時間箇所が被らないように1秒加算
-                    dt_now = dt_now + datetime.timedelta(seconds=1)
-                    file_name = dt_now.strftime('%Y%m%d-%H%M%S')
-                    # 連結した画像保存
-                    _, image_file_path = save_image(concatenated_image, file_name, True)
-                    log.logging('info', 'Concatenated Image saved: {}'.format(image_file_path))
-
-                    # LINEに通知
-                    log.logging('info', 'Start post to LINE.')
-                    post_result = post_line(cfg['line_info'], image_file_path, f'\n{last_label}を動体検知しました。')
-                    log_level = 'error' if 'Error' in post_result else 'info'
-                    log.logging(log_level, 'LINE result: {}'.format(post_result))
-
-                    # 作成した画像削除
-                    remove_images = []
-                    for image in image_dir.iterdir():
-                        remove_images.append(str(image))
-                        Path(image).unlink()
-                    log.logging('info', 'Delete images: {}'.format(remove_images))
-                    # 初期化
-                    last_label = ''
-                    image_list = []
-                    # 検知後は一時停止して、連続通知回避
-                    log.logging('info', 'Pause detecting for {} seconds'.format(cfg['pause_seconds']))
-                    time.sleep(cfg['pause_seconds'])
-                    # カウンタ・タイマーリセット
-                    detected_count = 0
-                    no_detected_start = 0
-                    elapsed_time = 0
-                    log.logging('info', '=== Restart detecting ===')
-                    continue
+                # video_writerオブジェクトがNoneじゃなければ(動体検知したら)、録画する
+                if video_writer is not None:
+                    video_writer.write(frame)
 
                 # 検知対象リストにあるか判定
                 if label in cfg['detect_label']:
                     detected_count += 1
                     # 非検知タイマーリセット
                     no_detected_start = 0
-                    # ログ文言に検知回数を追記
-                    log_str += ' Detected count: {}'.format(detected_count)
-                    log.logging('info', log_str)
+
+                    # 映像書き出し中以外は、ログ文言に検知回数を追記
+                    if video_writer is None:
+                        log_str += ' Detected count: {}'.format(detected_count)
+                        log.logging('info', log_str)
                 elif no_detected_start == 0:
                     # 非検知になったらタイマースタート
                     no_detected_start = time.perf_counter()
+                    if detected_count > 0:
+                        log.logging('info', 'No detected start.')
                 elif detected_count > 0:
                     # 非検知秒数カウント
-                    elapsed_time = time.perf_counter() - no_detected_start
-                    # 非検知秒数閾値に達したらリセット
-                    if elapsed_time > cfg['pause_seconds']:
-                        log.logging('info', 'No detected for {} seconds.'.format(cfg['pause_seconds']))
-                        log.logging('info', '=== Reset detected count. ===')
+                    no_detected_elapsed_time = time.perf_counter() - no_detected_start
+
+                    # 非検知秒数閾値を超えたら
+                    if no_detected_elapsed_time > cfg['threshold_no_detected_seconds']:
+                        log.logging('info', 'No detected for {} seconds.'.format(cfg['threshold_no_detected_seconds']))
+
+                        if video_writer is None:
+                            # video_writerオブジェクトがNoneの場合は、検知回数閾値に達さずに非検知になったとき
+                            # （一瞬だけトイレに入って、すぐ出た場合を想定）
+                            pass
+                        else:
+                            # 録画終了
+                            video_writer.release()
+                            log.logging('info', '○○○ Finish Rec ○○○')
+                            log.logging('info', '=== Reset detected count. ===')
+
+                            # S3にアップロードして、アップロードしたファイルの署名付きURLを取得
+                            aws = S3(cfg['s3_bucket_name'])
+                            presigned_urls = {}
+                            for key, val in {'image': image_file_path, 'video': video_file_path}.items():
+                                upload_result = aws.upload(str(val), val.name)
+                                if 'error' in upload_result:
+                                    log.logging('error', 'Upload Result: [{}]'.format(upload_result['error']))
+                                else:
+                                    log.logging('info', 'Upload Result: [{}]'.format(upload_result['info']))
+                                    presigned_url = aws.presigned_url(upload_result[log_level], cfg['s3_expires_in'])
+                                    log.logging('info', 'Presigned Url: [{}]'.format(presigned_url))
+                                    presigned_urls[key] = presigned_url
+
+                            # LINEに通知
+                            log.logging('info', 'Start post to LINE.')
+                            line_result = post_line(cfg['line_info'], last_label, presigned_urls)
+                            log_level = 'error' if 'error' in line_result else 'info'
+                            log.logging(log_level, 'LINE result: {}'.format(line_result[log_level]))
+
+                            # 作成した画像削除
+                            remove_images = []
+                            for image in image_dir.iterdir():
+                                remove_images.append(str(image))
+                                Path(image).unlink()
+                            log.logging('info', 'Delete images: {}'.format(remove_images))
+
+                            # 作成した映像削除
+                            remove_videos = []
+                            for video in video_dir.iterdir():
+                                remove_videos.append(str(video))
+                                Path(video).unlink()
+                            log.logging('info', 'Delete videos: {}'.format(remove_videos))
+
+                        log.logging('info', '=== Restart detecting ===')
+                        # 初期化
+                        last_label = ''
+                        video_writer = None
                         detected_count = 0
                         no_detected_start = 0
-                        elapsed_time = 0
+                        no_detected_elapsed_time = 0
 
-                # 検知回数の閾値に達したら画像を保存する
-                # 送信する画像の2枚目はcapture_interval後のキャプチャを取得したいため、ここではメール送信まで行わない
+                    continue
+
+                # 検知回数の閾値に達したら画像を保存して、動画書き出し開始
                 if detected_count == cfg['notice_threshold']:
                     # 検知ログ
                     log.logging('info', 'Detected: {}'.format(label))
                     # ラベルを取っておく
                     last_label = label
-                    # カウンタリセット
-                    detected_count = 0
+                    # ここのif文を通らないように、+1しておく
+                    detected_count += 1
                     # 現在時刻取得
                     dt_now = datetime.datetime.now()
                     file_name = dt_now.strftime('%Y%m%d-%H%M%S')
                     # 画像保存
-                    _, image_file_path = save_image(frame, file_name, False)
-                    image_list.append(image_file_path)
+                    image_dir, image_file_path = save_image(frame, file_name)
                     log.logging('info', 'Image saved: {}'.format(image_file_path))
-                    log.logging('info', 'Capture interval: {} seconds'.format(cfg['capture_interval']))
-                    # 待機
-                    time.sleep(cfg['capture_interval'])
+
+                    # 動画保存用ディレクトリ
+                    video_dir = Path.joinpath(Path(__file__).resolve().parent, 'videos')
+                    # ディレクトリなかったら作成
+                    if not video_dir.is_dir():
+                        Path.mkdir(video_dir)
+                        log.logging('info', 'make directory: {}'.format(video_dir))
+
+                    # mp4で動画書き出し
+                    fourcc = cv2.VideoWriter_fourcc('m', 'p', '4', 'v')
+                    video_file_path = Path(video_dir).joinpath(f'{file_name}.mp4')
+                    video_writer = cv2.VideoWriter(str(video_file_path), fourcc, fps, (frame_width, frame_height))
+                    log.logging('info', '●●● Start Rec ●●●')
+
                     continue
 
                 # 4角が真っ黒なら映像取得できていないはず。指定秒数経過したらLINEで通知する。

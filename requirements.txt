@@ -46,4 +46,5 @@ thop  # FLOPs computation
 # camknashi kun --------------------------------------
 python-dotenv
 ping3
-jinja2
+line-bot-sdk
+boto3
