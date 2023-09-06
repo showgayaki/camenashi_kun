@@ -60,7 +60,13 @@ def save_image(frame, file_name):
     return image_dir, image_file_path
 
 
-def post_line(line_info, label, urls):
+def post_line(line_info, message_dict):
+    bot = LineMessagingApi(line_info['access_token'])
+    message_result = bot.send_message(line_info['to'], message_dict)
+    return message_result
+
+
+def video_message(label, urls):
     message_dict = {
         'messages': [
             {
@@ -74,10 +80,7 @@ def post_line(line_info, label, urls):
             }
         ]
     }
-
-    bot = LineMessagingApi(line_info['access_token'])
-    message_result = bot.send_message(line_info['to'], message_dict)
-    return message_result
+    return message_dict
 
 
 def main(no_view=False):
@@ -191,7 +194,7 @@ def main(no_view=False):
 
                             # LINEに通知
                             log.logging('info', 'Start post to LINE.')
-                            line_result = post_line(cfg['line_info'], last_label, presigned_urls)
+                            line_result = post_line(cfg['line_info'], video_message(last_label, presigned_urls))
                             log_level = 'error' if 'error' in line_result else 'info'
                             log.logging(log_level, 'LINE result: {}'.format(line_result[log_level]))
 
@@ -320,12 +323,16 @@ def main(no_view=False):
     else:
         log.logging('error', '[{}] is NOT responding. Please check device.'
                     .format(cfg['camera_info']['camera_ip']))
+        msg = {
+            'messages': [
+                {
+                    'type': 'text',
+                    'text': '★ping NG\n{}は気絶しているみたいです。'.format(cfg['camera_info']['camera_ip'])
+                }
+            ]
+        }
         # エラーをLINEに送信
-        post_result = post_line(
-            cfg['line_info'],
-            None,
-            '\n★ping NG\n{}は気絶しているみたいです。'.format(cfg['camera_info']['camera_ip'])
-        )
-        log_level = 'error' if 'Error' in post_result else 'info'
-        log.logging(log_level, 'LINE result: {}'.format(post_result))
+        line_result = post_line(cfg['line_info'], msg)
+        log_level = 'error' if 'Error' in line_result else 'info'
+        log.logging(log_level, 'LINE result: {}'.format(line_result))
         log.logging('info', '===== Stop {} ====='.format(cfg['app_name']))
