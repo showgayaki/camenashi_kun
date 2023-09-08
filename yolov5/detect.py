@@ -199,8 +199,11 @@ def run(weights=ROOT / 'yolov5s.pt',  # model.pt path(s)
             #             vid_writer[i] = cv2.VideoWriter(save_path, cv2.VideoWriter_fourcc(*'mp4v'), fps, (w, h))
             #         vid_writer[i].write(im0)
 
+            # たぶん画像1枚の秒数が「t3 - t2」になっている
+            # なので下記の計算でFPSになるはず
+            fps = 1 / round(t3 - t2, 3)
             # 検知に必要な値を返す
-            yield detected_label, imc, f'{s}Done. ({t3 - t2:.3f}s)'
+            yield detected_label, imc, fps, f'{s}Done. ({t3 - t2:.3f}s)'
 
     # Print results
     t = tuple(x / seen * 1E3 for x in dt)  # speeds per image

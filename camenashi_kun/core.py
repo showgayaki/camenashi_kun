@@ -6,6 +6,7 @@ import cv2
 import numpy as np
 from ping3 import ping
 from pathlib import Path
+from statistics import mean
 from .config import Config
 from .logger import Logger
 from .line_messaging_api import LineMessagingApi
@@ -127,7 +128,7 @@ def main(no_view=False):
         video_dir = ''  # 録画映像保存用ディレクトリ
         video_file_path = ''  # 録画映像ファイル
         video_writer = None  # opencvのvideo writer
-        fps = 10  # 録画映像のFPS
+        fps_list = []  # 録画映像のFPS
         no_detected_start = 0  # 非検知秒数のカウント用
         no_detected_elapsed_time = 0  # 非検知経過時間
         view_img = not no_view  # ストリーミング表示するかは、引数から受け取る
@@ -135,8 +136,9 @@ def main(no_view=False):
         black_screen_start = 0  # 真っ黒画面になった時間
         black_screen_elapsed_seconds = 0  # 真っ黒画面の経過時間
         is_notified_screen_all_black = False  # 映像が真っ暗になったことを通知したかフラグ
+
         try:
-            for label, frame, log_str in detect.run(weights=WEITHTS, imgsz=IMAGE_SIZE, source=camera_url, nosave=True, view_img=view_img):
+            for label, frame, fps, log_str in detect.run(weights=WEITHTS, imgsz=IMAGE_SIZE, source=camera_url, nosave=True, view_img=view_img):
                 # ループの最初で解像度を取得しておく
                 if is_first_loop:
                     frame_height, frame_width, _ = frame.shape
@@ -151,6 +153,8 @@ def main(no_view=False):
                     detected_count += 1
                     # 非検知タイマーリセット
                     no_detected_start = 0
+                    # 録画時に指定する用に、FPSをlistに入れておく
+                    fps_list.append(fps)
 
                     # 映像書き出し中以外は、ログ文言に検知回数を追記
                     if video_writer is None:
@@ -247,7 +251,10 @@ def main(no_view=False):
                     # mp4で動画書き出し
                     fourcc = cv2.VideoWriter_fourcc('m', 'p', '4', 'v')
                     video_file_path = Path(video_dir).joinpath(f'{file_name}.mp4')
-                    video_writer = cv2.VideoWriter(str(video_file_path), fourcc, fps, (frame_width, frame_height))
+                    # FPSは平均値を取る
+                    fps_mean = round(mean(fps_list), 0)
+
+                    video_writer = cv2.VideoWriter(str(video_file_path), fourcc, fps_mean, (frame_width, frame_height))
                     log.logging('info', '●●● Start Rec ●●●')
 
                     continue

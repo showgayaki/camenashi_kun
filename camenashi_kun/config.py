@@ -21,12 +21,12 @@ class Config:
                 'camera_user': os.environ.get('CAMERA_USER'),
                 'camera_pass': os.environ.get('CAMERA_PASS')
             },
-            's3_bucket_name': os.environ.get('S3_BUCKET_NAME'),
-            's3_expires_in': int(os.environ.get('S3_EXPIRES_IN')),
             'notice_threshold': int(os.environ.get('NOTICE_THRESHOLD')),
             'threshold_no_detected_seconds': int(os.environ.get('THRESHOLD_NO_DETECTED_SECONDS')),
             'detect_label': set(os.environ.get('DETECT_LABEL').split(',')),
             'pause_seconds': int(os.environ.get('PAUSE_SECONDS')),
             'black_screen_seconds': int(os.environ.get('BLACK_SCREEN_SECONDS')),
+            's3_bucket_name': os.environ.get('S3_BUCKET_NAME'),
+            's3_expires_in': int(os.environ.get('S3_EXPIRES_IN')),
         }
         return conf
