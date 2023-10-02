@@ -1,4 +1,5 @@
 import boto3
+import mimetypes
 
 
 class S3:
@@ -8,8 +9,10 @@ class S3:
 
     def upload(self, local_file, bucket_file):
         bucket = self.s3.Bucket(self.bucket_name)
+        mimetype, _ = mimetypes.guess_type(local_file)
+
         try:
-            bucket.upload_file(local_file, bucket_file)
+            bucket.upload_file(local_file, bucket_file, ExtraArgs={'ContentType': mimetype})
             return {'info': bucket_file}
         except Exception as e:
             return {'error': str(e)}
