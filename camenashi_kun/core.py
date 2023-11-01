@@ -71,13 +71,34 @@ def video_message(label, urls):
     message_dict = {
         'messages': [
             {
-                'type': 'text',
-                'text': f'{label}を動体検知しました'
-            },
-            {
-                'type': 'video',
-                'originalContentUrl': urls['video'],
-                'previewImageUrl': urls['image'],
+                'type': 'flex',
+                'altText': f'{label}を動体検知しました',
+                'contents': {
+                    'type': 'bubble',
+                    'hero': {
+                        'type': 'video',
+                        'url': urls['video'],
+                        'previewUrl': urls['image'],
+                        'altContent': {
+                            'type': 'image',
+                            'size': 'full',
+                            'aspectRatio': '5:3',
+                            'aspectMode': 'cover',
+                            'url': urls['image']
+                        },
+                        'aspectRatio': '5:3'
+                    },
+                    'body': {
+                        'type': 'box',
+                        'layout': 'vertical',
+                        'contents': [
+                            {
+                                'type': 'text',
+                                'text': f'{label}を動体検知しました'
+                            }
+                        ]
+                    }
+                }
             }
         ]
     }
