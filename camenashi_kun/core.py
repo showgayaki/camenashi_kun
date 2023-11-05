@@ -9,7 +9,7 @@ from pathlib import Path
 from statistics import mean
 from .config import Config
 from .logger import Logger
-from .line_messaging_api import LineMessagingApi
+from .line import LineNotify, LineMessagingApi
 from .aws import S3
 import yolov5.detect as detect
 
@@ -61,9 +61,20 @@ def save_image(frame, file_name):
     return image_dir, image_file_path
 
 
-def post_line(line_info, message_dict):
-    bot = LineMessagingApi(line_info['access_token'])
-    message_result = bot.send_message(line_info['to'], message_dict)
+def post_line_notify(token, msg, image_file_path=None):
+    bot = LineNotify(token)
+    payload = {
+        'message': msg,
+        'stickerPackageId': None,
+        'stickerId': None
+    }
+
+    return bot.send_message(payload, image_file_path)
+
+
+def post_line_messaging_api(line, message_dict):
+    bot = LineMessagingApi(line['messaging_api_token'])
+    message_result = bot.send_message(line['to'], message_dict)
     return message_result
 
 
@@ -119,16 +130,16 @@ def main(no_view=False):
     # アプリケーション開始ログ
     log.logging('info', '===== {} Started on {} ====='.format(cfg['app_name'], computer_name))
     camera_url = 'rtsp://{}:{}@{}:554/stream2'.format(
-        cfg['camera_info']['camera_user'],
-        cfg['camera_info']['camera_pass'],
-        cfg['camera_info']['camera_ip'],
+        cfg['camera']['user'],
+        cfg['camera']['pass'],
+        cfg['camera']['ip'],
     )
-    log.logging('info', 'Camera IP address: {}.'.format(cfg['camera_info']['camera_ip']))
+    log.logging('info', 'Camera IP address: {}.'.format(cfg['camera']['ip']))
 
     # pingで疎通確認
     RETRY_COUNT = 3
     for i in range(RETRY_COUNT):
-        log_level, msg = ping_to_target(i, cfg['camera_info']['camera_ip'])
+        log_level, msg = ping_to_target(i, cfg['camera']['ip'])
         log.logging(log_level, msg)
         ping_result = False
         if log_level == 'info':
@@ -219,7 +230,7 @@ def main(no_view=False):
 
                             # LINEに通知
                             log.logging('info', 'Start post to LINE.')
-                            line_result = post_line(cfg['line_info'], video_message(last_label, presigned_urls))
+                            line_result = post_line_messaging_api(cfg['line'], video_message(last_label, presigned_urls))
                             log_level = 'error' if 'error' in line_result else 'info'
                             log.logging(log_level, 'LINE result: {}'.format(line_result[log_level]))
 
@@ -306,16 +317,8 @@ def main(no_view=False):
                         _, image_file_path = save_image(frame, file_name, False)
                         log.logging('info', 'Image saved: {}'.format(image_file_path))
                         # LINEに通知
-                        msg = {
-                            'messages': [
-                                {
-                                    'type': 'text',
-                                    'text': ('映像が真っ暗になってから{}分経過しました。\n'
-                                            'カメラをリブートした方がいいかもしれません。').format(black_screen_elapsed_minutes)
-                                }
-                            ]
-                        }
-                        post_result = post_line(cfg['line_info'], msg)
+                        msg = ('\n映像が真っ暗になってから{}分経過しました。\nカメラをリブートした方がいいかもしれません。').format(black_screen_elapsed_minutes)
+                        post_result = post_line_notify(cfg['line']['notify_token'], msg)
                         log_level = 'error' if 'Error' in post_result else 'info'
                         log.logging(log_level, 'LINE result: {}'.format(post_result))
                         # 画像削除
@@ -357,18 +360,10 @@ def main(no_view=False):
             # systemdで再起動
             raise e
     else:
-        log.logging('error', '[{}] is NOT responding. Please check device.'
-                    .format(cfg['camera_info']['camera_ip']))
-        msg = {
-            'messages': [
-                {
-                    'type': 'text',
-                    'text': '★ping NG\n{}は気絶しているみたいです。'.format(cfg['camera_info']['camera_ip'])
-                }
-            ]
-        }
+        log.logging('error', '[{}] is NOT responding. Please check device.'.format(cfg['camera']['ip']))
+        msg = '\n★ping NG\n{}は気絶しているみたいです。'.format(cfg['camera']['ip'])
         # エラーをLINEに送信
-        line_result = post_line(cfg['line_info'], msg)
+        line_result = post_line_notify(cfg['line']['notify_token'], msg)
         log_level = 'error' if 'Error' in line_result else 'info'
         log.logging(log_level, 'LINE result: {}'.format(line_result))
         log.logging('info', '===== Stop {} ====='.format(cfg['app_name']))

@@ -12,14 +12,15 @@ class Config:
         load_dotenv(dotenv_path)
         conf = {
             'app_name': 'Camenashi Kun',
-            'line_info': {
-                'access_token': os.environ.get('LINE_ACCESS_TOKEN'),
+            'line': {
+                'notify_token': os.environ.get('LINE_NOTIFY_ACCESS_TOKEN'),
+                'messaging_api_token': os.environ.get('LINE_MESSAGING_API_ACCESS_TOKEN'),
                 'to': os.environ.get('TO'),
             },
-            'camera_info': {
-                'camera_ip': os.environ.get('CAMERA_IP'),
-                'camera_user': os.environ.get('CAMERA_USER'),
-                'camera_pass': os.environ.get('CAMERA_PASS')
+            'camera': {
+                'ip': os.environ.get('CAMERA_IP'),
+                'user': os.environ.get('CAMERA_USER'),
+                'pass': os.environ.get('CAMERA_PASS')
             },
             'notice_threshold': int(os.environ.get('NOTICE_THRESHOLD')),
             'threshold_no_detected_seconds': int(os.environ.get('THRESHOLD_NO_DETECTED_SECONDS')),
