@@ -16,7 +16,7 @@ class Config:
                 'notify_token': os.getenv('LINE_NOTIFY_ACCESS_TOKEN'),
                 'messaging_api_token': os.getenv('LINE_MESSAGING_API_ACCESS_TOKEN'),
                 'to': os.getenv('TO'),
-                'messaging_api_limit': os.getenv('LINE_MESSAGING_API_LIMIT'),
+                'messaging_api_limit': int(os.getenv('LINE_MESSAGING_API_LIMIT')),
                 'is_notify_reached_limit': True if os.getenv('IS_NOTIFY_REACHED_LIMIT') == 'True' else False,
             },
             'camera': {
