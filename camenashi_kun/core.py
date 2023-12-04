@@ -319,7 +319,7 @@ def main(no_view=False):
                             log.logging('info', f'Environ[IS_NOTIFY_REACHED_LIMIT] is updated: {before} => {after}')
 
                         # LINE Notifyの場合はリンクを開く形になるため、LINEブラウザで見られる形式にする
-                        video_codec = 'VP90'
+                        fourcc = cv2.VideoWriter_fourcc(*'VP90')
                         video_suffix = 'webm'
                     else:
                         # 上限に達していなのに通知フラグがTrue = 先月のやつ
@@ -329,11 +329,10 @@ def main(no_view=False):
                             log.logging('info', f'Environ[IS_NOTIFY_REACHED_LIMIT] is updated: {before} => {after}')
 
                         # MessagingAPI用
-                        video_codec = 'MPV4'
+                        fourcc = cv2.VideoWriter_fourcc(*'MPV4')
                         video_suffix = 'mp4'
 
                     # 動画書き出し
-                    fourcc = cv2.VideoWriter_fourcc(*video_codec)
                     video_file_path = Path(video_dir).joinpath(f'{file_name}.{video_suffix}')
                     # FPSは平均値を取る
                     fps_mean = round(mean(fps_list), 0)
@@ -409,7 +408,7 @@ def main(no_view=False):
         except Exception as e:
             log.logging('error', 'Unkown Error: {}'.format(e))
             # エラーをLINEに送信
-            msg = f'\nやばいです。\n\n{e}\n\nが起きました。{cfg["pause_seconds"]}秒後に再起動します。'
+            msg = f'\nやばいです。\n\n{e}\n\nが起きました。\n{cfg["pause_seconds"]}秒後に再起動します。'
             line_result = post_line_notify(cfg['line']['notify_token'], msg)
             log.logging(line_result['level'], 'LINE result: {}'.format(line_result['detail']))
             # エラー発生したら一時停止してから再起動
