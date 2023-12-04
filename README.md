@@ -20,24 +20,27 @@ SciPyのインストールに失敗するときは、以下が必要かも。
 
 ## .env設定例
 ```
-SMTP_SERVER=smtp.gmail.com
-SMTP_PORT=587
-SMTP_USER=[user name@gmail.com]
-SMTP_PASS=[your password]
-MAIL_TO=[email address]
-MAIL_CC=[email address]
-
-CAMERA_IP=[local ip address]
+CAMERA_IP=[camera ip address]
 CAMERA_USER=[camera username]
 CAMERA_PASS=[camera password]
 
-NOTICE_THRESHOLD=20
+NOTICE_THRESHOLD=6
 DETECT_LABEL=cat
-CAPTURE_INTERVAL=90
+THRESHOLD_NO_DETECTED_SECONDS=30
 PAUSE_SECONDS=60
+BLACK_SCREEN_SECONDS=300
 
-LINE_API_URL=https://notify-api.line.me/api/notify
-LINE_ACCESS_TOKEN=
+LINE_NOTIFY_ACCESS_TOKEN=
+LINE_MESSAGING_API_ACCESS_TOKEN=
+TO=
+LINE_MESSAGING_API_LIMIT=200
+IS_NOTIFY_REACHED_LIMIT=False
+
+AWS_ACCESS_KEY_ID=
+AWS_SECRET_ACCESS_KEY=
+AWS_DEFAULT_REGION=ap-northeast-1
+S3_BUCKET_NAME=camenashi-kun
+S3_EXPIRES_IN=43200
 ```
 
 ## 実行

@@ -22,12 +22,6 @@ def raise_exception(*_):
     raise TerminatedExecption()
 
 
-def load_config(root_dir):
-    config = Config(root_dir)
-    cfg = config.fetch_config()
-    return cfg
-
-
 def ping_to_target(try_count, target_ip):
     res = None
     log_level = 'info'
@@ -70,6 +64,15 @@ def post_line_notify(token, msg, image_file_path=None):
     }
 
     return bot.send_message(payload, image_file_path)
+
+
+def is_reached_monthly_limit(limit, monthly_usage, member_count):
+    # APIの回数は、メッセージを送った人数でカウントされる
+    # そのため[当月の回数 + グループ人数]が上限を超えていたら、今月はもう送れない
+    if (monthly_usage + member_count) > limit:
+        return True
+    else:
+        return False
 
 
 def post_line_messaging_api(line, message_dict):
@@ -126,7 +129,8 @@ def main(no_view=False):
     # ログ
     log = Logger(root_dir)
     # 設定読み込み
-    cfg = load_config(root_dir)
+    config = Config(root_dir)
+    cfg = config.fetch_config()
     # アプリケーション開始ログ
     log.logging('info', '===== {} Started on {} ====='.format(cfg['app_name'], computer_name))
     camera_url = 'rtsp://{}:{}@{}:554/stream2'.format(
@@ -168,6 +172,9 @@ def main(no_view=False):
         black_screen_start = 0  # 真っ黒画面になった時間
         black_screen_elapsed_seconds = 0  # 真っ黒画面の経過時間
         is_notified_screen_all_black = False  # 映像が真っ暗になったことを通知したかフラグ
+        messaging_api = None  # MessagingAPIインスタンス
+        monthly_usage = 0  # MessagingAPIの当月の回数
+        is_reached_monthly_limit_of_messaging_api = False  # MessagingAPIの月の上限に達したか
 
         try:
             for label, frame, fps, log_str in detect.run(weights=WEITHTS, imgsz=IMAGE_SIZE, source=camera_url, nosave=True, view_img=view_img):
@@ -230,9 +237,16 @@ def main(no_view=False):
 
                             # LINEに通知
                             log.logging('info', 'Start post to LINE.')
-                            line_result = post_line_messaging_api(cfg['line'], video_message(last_label, presigned_urls))
-                            log_level = 'error' if 'error' in line_result else 'info'
-                            log.logging(log_level, 'LINE result: {}'.format(line_result[log_level]))
+                            # MessagingAPIの上限に達していたら、LINE Notifyに切り替え
+                            if is_reached_monthly_limit_of_messaging_api:
+                                line_result = post_line_notify(
+                                    cfg['line']['notify_token'],
+                                    f'\n{last_label}を動体検知しました。\n{presigned_urls["video"]}'
+                                )
+                            else:
+                                line_result = post_line_messaging_api(cfg['line'], video_message(last_label, presigned_urls))
+
+                            log.logging(line_result['level'], 'LINE result: {}'.format(line_result['detail']))
 
                             # 作成した画像削除
                             remove_images = []
@@ -280,9 +294,47 @@ def main(no_view=False):
                         Path.mkdir(video_dir)
                         log.logging('info', 'make directory: {}'.format(video_dir))
 
-                    # mp4で動画書き出し
-                    fourcc = cv2.VideoWriter_fourcc('m', 'p', '4', 'v')
-                    video_file_path = Path(video_dir).joinpath(f'{file_name}.mp4')
+                    # MessagingAPIの当月の上限に達したかチェック
+                    messaging_api = LineMessagingApi(cfg['line']['messaging_api_token'])
+                    message_quota_consumption = messaging_api.message_quota_consumption()
+                    monthly_usage = message_quota_consumption['totalUsage']
+                    log.logging(message_quota_consumption['level'], f'get_message_quota_consumption result: {message_quota_consumption["detail"]}')
+
+                    member_count = messaging_api.group_member_count(cfg['line']['to'])
+                    log.logging(member_count['level'], f'get_group_member_count result: {member_count["detail"]}')
+                    # 上限判定
+                    is_reached_monthly_limit_of_messaging_api = is_reached_monthly_limit(cfg['line']['messaging_api_limit'], monthly_usage, member_count['count'])
+
+                    # LINE NotifyとMessagingAPIでコーデックを変える
+                    if is_reached_monthly_limit_of_messaging_api:
+                        # 上限に達したことをまだ通知してなかったら、通知する
+                        if not cfg['line']['is_notify_reached_limit']:
+                            line_result = post_line_notify(
+                                cfg['line']['notify_token'],
+                                f'\nMessagingAPIの、今月の上限({cfg["line"]["messaging_api_limit"]}回)に達しました。\
+                                    \n回数は {monthly_usage}回です。'
+                            )
+                            # .envファイル書き換えて次回以降は通知しない
+                            cfg, before, after = config.toggle_is_notify_reached_limit(True)
+                            log.logging('info', f'Environ[IS_NOTIFY_REACHED_LIMIT] is updated: {before} => {after}')
+
+                        # LINE Notifyの場合はリンクを開く形になるため、LINEブラウザで見られる形式にする
+                        video_codec = 'VP90'
+                        video_suffix = 'webm'
+                    else:
+                        # 上限に達していなのに通知フラグがTrue = 先月のやつ
+                        # Falseに戻しておく
+                        if cfg['line']['is_notify_reached_limit']:
+                            cfg, before, after = config.toggle_is_notify_reached_limit(False)
+                            log.logging('info', f'Environ[IS_NOTIFY_REACHED_LIMIT] is updated: {before} => {after}')
+
+                        # MessagingAPI用
+                        video_codec = 'MPV4'
+                        video_suffix = 'mp4'
+
+                    # 動画書き出し
+                    fourcc = cv2.VideoWriter_fourcc(*video_codec)
+                    video_file_path = Path(video_dir).joinpath(f'{file_name}.{video_suffix}')
                     # FPSは平均値を取る
                     fps_mean = round(mean(fps_list), 0)
 
@@ -318,9 +370,8 @@ def main(no_view=False):
                         log.logging('info', 'Image saved: {}'.format(image_file_path))
                         # LINEに通知
                         msg = ('\n映像が真っ暗になってから{}分経過しました。\nカメラをリブートした方がいいかもしれません。').format(black_screen_elapsed_minutes)
-                        post_result = post_line_notify(cfg['line']['notify_token'], msg)
-                        log_level = 'error' if 'Error' in post_result else 'info'
-                        log.logging(log_level, 'LINE result: {}'.format(post_result))
+                        line_result = post_line_notify(cfg['line']['notify_token'], msg)
+                        log.logging(line_result['level'], 'LINE result: {}'.format(line_result['detail']))
                         # 画像削除
                         Path(image_file_path).unlink()
                         # 通知しました
@@ -345,6 +396,10 @@ def main(no_view=False):
             import traceback
             traceback.print_exc()
             log.logging('error', 'ERROR: {}'.format(e))
+            # エラーをLINEに送信
+            msg = f'\nやばいです。\n\n{e}\n\nが起きました。{cfg["pause_seconds"]}秒後に再起動します。'
+            line_result = post_line_notify(cfg['line']['notify_token'], msg)
+            log.logging(line_result['level'], 'LINE result: {}'.format(line_result['detail']))
             # エラー発生したら一時停止してから再起動
             log.logging('info', 'Pause detecting for {} seconds'.format(cfg['pause_seconds']))
             time.sleep(cfg['pause_seconds'])
@@ -353,6 +408,10 @@ def main(no_view=False):
             raise e
         except Exception as e:
             log.logging('error', 'Unkown Error: {}'.format(e))
+            # エラーをLINEに送信
+            msg = f'\nやばいです。\n\n{e}\n\nが起きました。{cfg["pause_seconds"]}秒後に再起動します。'
+            line_result = post_line_notify(cfg['line']['notify_token'], msg)
+            log.logging(line_result['level'], 'LINE result: {}'.format(line_result['detail']))
             # エラー発生したら一時停止してから再起動
             log.logging('info', 'Pause detecting for {} seconds'.format(cfg['pause_seconds']))
             time.sleep(cfg['pause_seconds'])
@@ -364,6 +423,5 @@ def main(no_view=False):
         msg = '\n★ping NG\n{}は気絶しているみたいです。'.format(cfg['camera']['ip'])
         # エラーをLINEに送信
         line_result = post_line_notify(cfg['line']['notify_token'], msg)
-        log_level = 'error' if 'Error' in line_result else 'info'
-        log.logging(log_level, 'LINE result: {}'.format(line_result))
+        log.logging(line_result['level'], 'LINE result: {}'.format(line_result['detail']))
         log.logging('info', '===== Stop {} ====='.format(cfg['app_name']))

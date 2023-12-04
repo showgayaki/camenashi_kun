@@ -1,5 +1,6 @@
 from linebot.v3.messaging import Configuration, MessagingApi, ApiClient, PushMessageRequest, ApiException
 import requests
+import json
 
 
 class LineNotify:
@@ -26,11 +27,11 @@ class LineNotify:
         try:
             res = requests.post(self.api_url, headers=self.headers, data=payload, files=files)
             status_code = res.status_code
+            return {'level': 'info', 'detail': f'StatusCode: {status_code}'}
         except Exception as e:
-            return {'error': str(e)}
-        else:
+            return {'level': 'error', 'detail': str(e)}
+        finally:
             res.close()
-            return {'info': 'StatusCode: {}'.format(status_code)}
 
 
 class LineMessagingApi:
@@ -49,6 +50,40 @@ class LineMessagingApi:
 
             try:
                 push_message_result = api_instance.push_message_with_http_info(push_message_request, _return_http_data_only=False)
-                return {'info': f'StatusCode: {push_message_result.status_code}'}
+                return {'level': 'info', 'detail': f'StatusCode: {push_message_result.status_code}'}
             except ApiException as e:
-                return {'error': 'Exception when calling MessagingApi->push_message: %s\n' % e}
+                return {'level': 'error', 'detail': 'Exception when calling MessagingApi->push_message: %s\n' % e}
+
+    def message_quota_consumption(self):
+        """
+        https://developers.line.biz/ja/reference/messaging-api/#get-consumption
+        https://github.com/line/line-bot-sdk-python/blob/master/linebot/v3/messaging/docs/MessagingApi.md#get_message_quota_consumption
+        """
+        with ApiClient(self.configuration) as api_client:
+            # Create an instance of the API class
+            api_instance = MessagingApi(api_client)
+
+            try:
+                api_response = api_instance.get_message_quota_consumption()
+                api_response_json = json.loads(api_response.to_json())
+
+                return {'level': 'info', 'detail': api_response_json, 'totalUsage': api_response_json['totalUsage']}
+            except ApiException as e:
+                return {'level': 'error', 'detail': 'Exception when calling MessagingApi->get_message_quota_consumption: %s\n' % e}
+
+    def group_member_count(self, to):
+        """
+        https://developers.line.biz/ja/reference/messaging-api/#get-members-group-count
+        https://github.com/line/line-bot-sdk-python/blob/master/linebot/v3/messaging/docs/MessagingApi.md#get_group_member_count
+        """
+        with ApiClient(self.configuration) as api_client:
+            # Create an instance of the API class
+            api_instance = MessagingApi(api_client)
+
+            try:
+                api_response = api_instance.get_group_member_count(to)
+                api_response_json = json.loads(api_response.to_json())
+
+                return {'level': 'info', 'detail': api_response_json, 'count': api_response_json['count']}
+            except ApiException as e:
+                return {'level': 'error', 'detail': 'Exception when calling MessagingApi->push_message: %s\n' % e}
