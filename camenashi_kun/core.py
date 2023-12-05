@@ -329,7 +329,7 @@ def main(no_view=False):
                             log.logging('info', f'Environ[IS_NOTIFY_REACHED_LIMIT] is updated: {before} => {after}')
 
                         # MessagingAPI用
-                        fourcc = cv2.VideoWriter_fourcc('M', 'P', 'V', '4')
+                        fourcc = cv2.VideoWriter_fourcc('M', 'P', '4', 'V')
                         video_suffix = 'mp4'
 
                     # 動画書き出し
