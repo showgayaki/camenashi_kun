@@ -319,7 +319,7 @@ def main(no_view=False):
                             log.logging('info', f'Environ[IS_NOTIFY_REACHED_LIMIT] is updated: {before} => {after}')
 
                         # LINE Notifyの場合はリンクを開く形になるため、LINEブラウザで見られる形式にする
-                        fourcc = cv2.VideoWriter_fourcc(*'VP90')
+                        fourcc = cv2.VideoWriter_fourcc('V', 'P', '9', '0')
                         video_suffix = 'webm'
                     else:
                         # 上限に達していなのに通知フラグがTrue = 先月のやつ
@@ -329,7 +329,7 @@ def main(no_view=False):
                             log.logging('info', f'Environ[IS_NOTIFY_REACHED_LIMIT] is updated: {before} => {after}')
 
                         # MessagingAPI用
-                        fourcc = cv2.VideoWriter_fourcc(*'MPV4')
+                        fourcc = cv2.VideoWriter_fourcc('M', 'P', 'V', '4')
                         video_suffix = 'mp4'
 
                     # 動画書き出し
