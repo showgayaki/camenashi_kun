@@ -6,3 +6,8 @@ __pycache__/
 log/
 camenashi_kun/images/
 camenashi_kun/videos/
+
+checkpoint/
+train/
+val/
+*_video.txt
