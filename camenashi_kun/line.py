@@ -67,7 +67,9 @@ class LineMessagingApi:
                 api_response = api_instance.get_message_quota_consumption()
                 api_response_json = json.loads(api_response.to_json())
 
-                return {'level': 'info', 'detail': api_response_json, 'totalUsage': api_response_json['totalUsage']}
+                totalUsage = api_response_json['totalUsage'] if 'totalUsage' in api_response_json else None
+
+                return {'level': 'info', 'detail': api_response_json, 'totalUsage': totalUsage}
             except ApiException as e:
                 return {'level': 'error', 'detail': 'Exception when calling MessagingApi->get_message_quota_consumption: %s\n' % e}
 
@@ -84,6 +86,8 @@ class LineMessagingApi:
                 api_response = api_instance.get_group_member_count(to)
                 api_response_json = json.loads(api_response.to_json())
 
-                return {'level': 'info', 'detail': api_response_json, 'count': api_response_json['count']}
+                count = api_response_json['count'] if 'count' in api_response_json else None
+
+                return {'level': 'info', 'detail': api_response_json, 'count': count}
             except ApiException as e:
                 return {'level': 'error', 'detail': 'Exception when calling MessagingApi->push_message: %s\n' % e}

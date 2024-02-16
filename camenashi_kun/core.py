@@ -174,7 +174,7 @@ def main(no_view=False):
         is_notified_screen_all_black = False  # 映像が真っ暗になったことを通知したかフラグ
         messaging_api = None  # MessagingAPIインスタンス
         monthly_usage = 0  # MessagingAPIの当月の回数
-        is_reached_monthly_limit_of_messaging_api = False  # MessagingAPIの月の上限に達したか
+        use_line_notify = False  # MessagingAPIの月の上限に達したか
 
         try:
             for label, frame, fps, log_str in detect.run(weights=WEITHTS, imgsz=IMAGE_SIZE, source=camera_url, nosave=True, view_img=view_img):
@@ -238,7 +238,7 @@ def main(no_view=False):
                             # LINEに通知
                             log.logging('info', 'Start post to LINE.')
                             # MessagingAPIの上限に達していたら、LINE Notifyに切り替え
-                            if is_reached_monthly_limit_of_messaging_api:
+                            if use_line_notify:
                                 line_result = post_line_notify(
                                     cfg['line']['notify_token'],
                                     f'\n{last_label}を動体検知しました。\n{presigned_urls["video"]}'
@@ -297,16 +297,25 @@ def main(no_view=False):
                     # MessagingAPIの当月の上限に達したかチェック
                     messaging_api = LineMessagingApi(cfg['line']['messaging_api_token'])
                     message_quota_consumption = messaging_api.message_quota_consumption()
-                    monthly_usage = message_quota_consumption['totalUsage']
-                    log.logging(message_quota_consumption['level'], f'get_message_quota_consumption result: {message_quota_consumption["detail"]}')
+                    log.logging(
+                        message_quota_consumption['level'],
+                        f'get_message_quota_consumption result: {message_quota_consumption["detail"]}'
+                    )
 
+                    monthly_usage = message_quota_consumption['totalUsage']
                     member_count = messaging_api.group_member_count(cfg['line']['to'])
                     log.logging(member_count['level'], f'get_group_member_count result: {member_count["detail"]}')
-                    # 上限判定
-                    is_reached_monthly_limit_of_messaging_api = is_reached_monthly_limit(cfg['line']['messaging_api_limit'], monthly_usage, member_count['count'])
+                    # LINE Notifyを使うか、MessagingAPIを使うか判定
+                    # monthly_usageとmember_countが数字じゃない場合は、MessagingAPIに
+                    # なんらかの問題が起こっていそうなので、LINE Nofityを使う
+                    use_line_notify = is_reached_monthly_limit(
+                        cfg['line']['messaging_api_limit'],
+                        monthly_usage,
+                        member_count['count']
+                    ) if (isinstance(monthly_usage, int) and isinstance(member_count['count'], int)) else False
 
                     # LINE NotifyとMessagingAPIでコーデックを変える
-                    if is_reached_monthly_limit_of_messaging_api:
+                    if use_line_notify:
                         # 上限に達したことをまだ通知してなかったら、通知する
                         if not cfg['line']['is_notify_reached_limit']:
                             line_result = post_line_notify(
