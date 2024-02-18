@@ -24,6 +24,7 @@ class Config:
                 'user': os.getenv('CAMERA_USER'),
                 'pass': os.getenv('CAMERA_PASS')
             },
+            'movie_speed': int(os.getenv('MOVIE_SPEED')),
             'notice_threshold': int(os.getenv('NOTICE_THRESHOLD')),
             'threshold_no_detected_seconds': int(os.getenv('THRESHOLD_NO_DETECTED_SECONDS')),
             'detect_label': set(os.getenv('DETECT_LABEL').split(',')),

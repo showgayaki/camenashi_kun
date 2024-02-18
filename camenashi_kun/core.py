@@ -339,10 +339,10 @@ def main(no_view=False):
 
                     # 動画書き出し
                     video_file_path = Path(video_dir).joinpath(f'{file_name}.{video_suffix}')
-                    # FPSは平均値を取る
-                    fps_mean = round(mean(fps_list), 0)
+                    # FPSは平均を取って、何倍速か計算
+                    rec_fps = round(mean(fps_list), 0) * cfg['movie_speed']
 
-                    video_writer = cv2.VideoWriter(str(video_file_path), fourcc, fps_mean, (frame_width, frame_height))
+                    video_writer = cv2.VideoWriter(str(video_file_path), fourcc, rec_fps, (frame_width, frame_height))
                     log.logging('info', '●●● Start Rec ●●●')
 
                     continue
