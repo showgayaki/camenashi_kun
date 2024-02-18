@@ -143,8 +143,8 @@ def run(weights=ROOT / 'yolov5s.pt',  # model.pt path(s)
             annotator = Annotator(im0, line_width=line_thickness, example=str(names))
 
             # 検知した物体のラベル
-            detected_label = ''
-            # detected_label = []
+            # detected_label = ''
+            detected_label = []
             if len(det):
                 # Rescale boxes from img_size to im0 size
                 det[:, :4] = scale_coords(im.shape[2:], det[:, :4], im0.shape).round()
@@ -153,8 +153,8 @@ def run(weights=ROOT / 'yolov5s.pt',  # model.pt path(s)
                 for c in det[:, -1].unique():
                     n = (det[:, -1] == c).sum()  # detections per class
                     s += f"{n} {names[int(c)]}{'s' * (n > 1)}, "  # add to string
-                    detected_label = names[int(c)]
-                    # detected_label.append(names[int(c)])
+                    # detected_label = names[int(c)]
+                    detected_label.append(names[int(c)])
 
                 # Write results
                 for *xyxy, conf, cls in reversed(det):
@@ -204,6 +204,7 @@ def run(weights=ROOT / 'yolov5s.pt',  # model.pt path(s)
             fps = 1 / round(t3 - t2, 3)
             # 検知に必要な値を返す
             yield detected_label, imc, fps, f'{s}Done. ({t3 - t2:.3f}s)'
+            # yield detected_label, im0, fps, f'{s}Done. ({t3 - t2:.3f}s)'
 
     # Print results
     t = tuple(x / seen * 1E3 for x in dt)  # speeds per image

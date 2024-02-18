@@ -158,7 +158,6 @@ def main(no_view=False):
     if ping_result:
         BLACK_COLOR_CODE = 0
         detected_count = 0  # 検知回数
-        last_label = ''  # メール送信用の検知した物体のラベル
         image_dir = ''  # キャプチャ画像保存用ディレクトリ
         image_file_path = ''  # キャプチャ画像パス
         video_dir = ''  # 録画映像保存用ディレクトリ
@@ -177,7 +176,7 @@ def main(no_view=False):
         use_line_notify = False  # MessagingAPIの月の上限に達したか
 
         try:
-            for label, frame, fps, log_str in detect.run(weights=WEITHTS, imgsz=IMAGE_SIZE, source=camera_url, nosave=True, view_img=view_img):
+            for label_list, frame, fps, log_str in detect.run(weights=WEITHTS, imgsz=IMAGE_SIZE, source=camera_url, nosave=True, view_img=view_img):
                 # ループの最初で解像度を取得しておく
                 if is_first_loop:
                     frame_height, frame_width, _ = frame.shape
@@ -188,7 +187,7 @@ def main(no_view=False):
                     video_writer.write(frame)
 
                 # 検知対象リストにあるか判定
-                if label in cfg['detect_label']:
+                if cfg['detect_label'] in label_list:
                     detected_count += 1
                     # 非検知タイマーリセット
                     no_detected_start = 0
@@ -241,10 +240,10 @@ def main(no_view=False):
                             if use_line_notify:
                                 line_result = post_line_notify(
                                     cfg['line']['notify_token'],
-                                    f'\n{last_label}を動体検知しました。\n{presigned_urls["video"]}'
+                                    f'\n{cfg["detect_label"]}を動体検知しました。\n{presigned_urls["video"]}'
                                 )
                             else:
-                                line_result = post_line_messaging_api(cfg['line'], video_message(last_label, presigned_urls))
+                                line_result = post_line_messaging_api(cfg['line'], video_message(cfg['detect_label'], presigned_urls))
 
                             log.logging(line_result['level'], 'LINE result: {}'.format(line_result['detail']))
 
@@ -264,7 +263,6 @@ def main(no_view=False):
 
                         log.logging('info', '=== Restart detecting ===')
                         # 初期化
-                        last_label = ''
                         video_writer = None
                         detected_count = 0
                         no_detected_start = 0
@@ -275,9 +273,7 @@ def main(no_view=False):
                 # 検知回数の閾値に達したら画像を保存して、動画書き出し開始
                 if detected_count == cfg['notice_threshold']:
                     # 検知ログ
-                    log.logging('info', 'Detected: {}'.format(label))
-                    # ラベルを取っておく
-                    last_label = label
+                    log.logging('info', 'Detected: {}'.format(cfg['detect_label']))
                     # ここのif文を通らないように、+1しておく
                     detected_count += 1
                     # 現在時刻取得
