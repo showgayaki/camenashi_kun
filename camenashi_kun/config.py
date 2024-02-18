@@ -27,7 +27,7 @@ class Config:
             'movie_speed': int(os.getenv('MOVIE_SPEED')),
             'notice_threshold': int(os.getenv('NOTICE_THRESHOLD')),
             'threshold_no_detected_seconds': int(os.getenv('THRESHOLD_NO_DETECTED_SECONDS')),
-            'detect_label': set(os.getenv('DETECT_LABEL').split(',')),
+            'detect_label': os.getenv('DETECT_LABEL'),
             'pause_seconds': int(os.getenv('PAUSE_SECONDS')),
             'black_screen_seconds': int(os.getenv('BLACK_SCREEN_SECONDS')),
             's3_bucket_name': os.getenv('S3_BUCKET_NAME'),
