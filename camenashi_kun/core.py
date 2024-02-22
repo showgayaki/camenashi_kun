@@ -310,7 +310,6 @@ def main(no_view=False):
                         member_count['count']
                     ) if (isinstance(monthly_usage, int) and isinstance(member_count['count'], int)) else False
 
-                    # LINE NotifyとMessagingAPIでコーデックを変える
                     if use_line_notify:
                         # 上限に達したことをまだ通知してなかったら、通知する
                         if not cfg['line']['is_notify_reached_limit']:
@@ -322,10 +321,6 @@ def main(no_view=False):
                             # .envファイル書き換えて次回以降は通知しない
                             cfg, before, after = config.toggle_is_notify_reached_limit(True)
                             log.logging('info', f'Environ[IS_NOTIFY_REACHED_LIMIT] is updated: {before} => {after}')
-
-                        # LINE Notifyの場合はリンクを開く形になるため、LINEブラウザで見られる形式にする
-                        fourcc = cv2.VideoWriter_fourcc('V', 'P', '9', '0')
-                        video_suffix = 'webm'
                     else:
                         # 上限に達していなのに通知フラグがTrue = 先月のやつ
                         # Falseに戻しておく
@@ -333,9 +328,9 @@ def main(no_view=False):
                             cfg, before, after = config.toggle_is_notify_reached_limit(False)
                             log.logging('info', f'Environ[IS_NOTIFY_REACHED_LIMIT] is updated: {before} => {after}')
 
-                        # MessagingAPI用
-                        fourcc = cv2.VideoWriter_fourcc('M', 'P', '4', 'V')
-                        video_suffix = 'mp4'
+                    # 書き出し設定
+                    fourcc = cv2.VideoWriter_fourcc('a', 'v', 'c', '1')
+                    video_suffix = 'mp4'
 
                     # 動画書き出し
                     video_file_path = Path(video_dir).joinpath(f'{file_name}.{video_suffix}')
