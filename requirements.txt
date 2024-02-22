@@ -14,8 +14,8 @@ tqdm>=4.41.0
 
 # PyTorchとtorchvisionのバージョン固定
 # https://github.com/pytorch/vision#installation
-torch==1.9.0
-torchvision==0.10.0
+torch==2.1
+torchvision==0.16
 # --find-links https://download.pytorch.org/whl/rocm4.2/torch_stable.html
 # torch
 # torchvision==0.11.2
@@ -43,8 +43,14 @@ seaborn>=0.11.0
 # roboflow
 thop  # FLOPs computation
 
-# camknashi kun --------------------------------------
+# camknashi kun -------------------------------
 python-dotenv
 ping3
 line-bot-sdk
 boto3
+
+# mmaction2 -----------------------------------
+einops
+eva-decord
+
+ipykernel
