@@ -32,6 +32,10 @@ class Config:
             'black_screen_seconds': int(os.getenv('BLACK_SCREEN_SECONDS')),
             's3_bucket_name': os.getenv('S3_BUCKET_NAME'),
             's3_expires_in': int(os.getenv('S3_EXPIRES_IN')),
+            'ssh': {
+                'hostname': os.getenv('SSH_HOSTNAME'),
+                'upload_dir': os.getenv('SSH_UPLOAD_DIR'),
+            }
         }
         return conf
 

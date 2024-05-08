@@ -11,6 +11,7 @@ from .config import Config
 from .logger import Logger
 from .line import LineNotify, LineMessagingApi
 from .aws import S3
+from .ssh import Ssh
 import yolov5.detect as detect
 
 
@@ -121,7 +122,7 @@ def video_message(label, urls):
 
 def main(no_view=False):
     WEITHTS = 'yolov5/yolov5s.pt'
-    IMAGE_SIZE = [640, 640]
+    IMAGE_SIZE = [384, 640]
     computer_name = socket.gethostname()
     root_dir = Path(__file__).resolve().parents[1]
     # systemdの終了を受け取る
@@ -227,9 +228,9 @@ def main(no_view=False):
                             for key, val in {'image': image_file_path, 'video': video_file_path}.items():
                                 upload_result = aws.upload(str(val), val.name)
                                 if 'error' in upload_result:
-                                    log.logging('error', 'Upload Result: [{}]'.format(upload_result['error']))
+                                    log.logging('error', '{} Upload Result: [{}]'.format(key.capitalize(), upload_result['error']))
                                 else:
-                                    log.logging('info', 'Upload Result: [{}]'.format(upload_result['info']))
+                                    log.logging('info', '{} Upload Result: [{}]'.format(key.capitalize(), upload_result['info']))
                                     presigned_url = aws.presigned_url(upload_result['info'], cfg['s3_expires_in'])
                                     log.logging('info', 'Presigned Url: [{}]'.format(presigned_url))
                                     presigned_urls[key] = presigned_url
@@ -240,12 +241,22 @@ def main(no_view=False):
                             if use_line_notify:
                                 line_result = post_line_notify(
                                     cfg['line']['notify_token'],
-                                    f'\n{cfg["detect_label"]}を動体検知しました。\n{presigned_urls["video"]}'
+                                    f'\n{cfg["detect_label"]}を動体検知しました\n{presigned_urls["video"]}'
                                 )
                             else:
                                 line_result = post_line_messaging_api(cfg['line'], video_message(cfg['detect_label'], presigned_urls))
 
                             log.logging(line_result['level'], 'LINE result: {}'.format(line_result['detail']))
+
+                            # SFTPでアップロード
+                            ssh = Ssh(cfg['ssh']['hostname'])
+                            log.logging('info', 'SSH to {}({})'.format(cfg['ssh']['hostname'], ssh.config['hostname']))
+                            # NASに動画をSFTPでアップロード
+                            sftp_upload_result = ssh.sftp_upload(
+                                str(video_file_path),
+                                str(Path(cfg['ssh']['upload_dir']).joinpath(video_file_path.name)),
+                            )
+                            log.logging(sftp_upload_result['level'], 'SFTP Upload Result: {}({})'.format(sftp_upload_result['result'], sftp_upload_result['detail']))
 
                             # 作成した画像削除
                             remove_images = []
@@ -254,12 +265,12 @@ def main(no_view=False):
                                 Path(image).unlink()
                             log.logging('info', 'Delete images: {}'.format(remove_images))
 
-                            # 作成した映像削除
-                            remove_videos = []
-                            for video in video_dir.iterdir():
-                                remove_videos.append(str(video))
-                                Path(video).unlink()
-                            log.logging('info', 'Delete videos: {}'.format(remove_videos))
+                            # # 作成した映像削除
+                            # remove_videos = []
+                            # for video in video_dir.iterdir():
+                            #     remove_videos.append(str(video))
+                            #     Path(video).unlink()
+                            # log.logging('info', 'Delete videos: {}'.format(remove_videos))
 
                         log.logging('info', '=== Restart detecting ===')
                         # 初期化
