@@ -258,6 +258,15 @@ def main(no_view=False):
                             )
                             log.logging(sftp_upload_result['level'], 'SFTP Upload Result: {}({})'.format(sftp_upload_result['result'], sftp_upload_result['detail']))
 
+                            if sftp_upload_result['level'] != 'error':
+                                # 古いファイルは削除
+                                remove_result = ssh.remove_old_files(cfg['ssh']['upload_dir'], cfg['ssh']['threshold_storage_days'])
+                                if remove_result is None:
+                                    log.logging('info', 'SSH server: No files are older than {} days'.format(cfg['ssh']['threshold_storage_days']))
+                                else:
+                                    log.logging(remove_result['level'], 'Remove Result: {}'.format(remove_result['result']))
+                                    log.logging(remove_result['level'], 'Removed Files: {}'.format(remove_result['detail']))
+
                             # 作成した画像削除
                             remove_images = []
                             for image in image_dir.iterdir():

@@ -35,6 +35,7 @@ class Config:
             'ssh': {
                 'hostname': os.getenv('SSH_HOSTNAME'),
                 'upload_dir': os.getenv('SSH_UPLOAD_DIR'),
+                'threshold_storage_days': int(os.getenv('THRESHOLD_STORAGE_DAYS')),
             }
         }
         return conf
