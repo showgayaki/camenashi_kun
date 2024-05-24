@@ -177,7 +177,13 @@ def main(no_view=False):
         use_line_notify = False  # MessagingAPIの月の上限に達したか
 
         try:
-            for label_list, frame, fps, log_str in detect.run(weights=WEITHTS, imgsz=IMAGE_SIZE, source=camera_url, nosave=True, view_img=view_img):
+            for label_list, frame, fps, log_str in detect.run(
+                weights=WEITHTS,
+                imgsz=IMAGE_SIZE,
+                source=camera_url,
+                nosave=True,
+                view_img=view_img,
+                    detect_area=cfg['detect_area']):
                 # ループの最初で解像度を取得しておく
                 if is_first_loop:
                     frame_height, frame_width, _ = frame.shape

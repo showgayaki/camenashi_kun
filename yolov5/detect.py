@@ -62,6 +62,7 @@ def run(weights=ROOT / 'yolov5s.pt',  # model.pt path(s)
         hide_conf=False,  # hide confidences
         half=False,  # use FP16 half-precision inference
         dnn=False,  # use OpenCV DNN for ONNX inference
+        detect_area=None,
         ):
     source = str(source)
     save_img = not nosave and not source.endswith('.txt')  # save inference images
@@ -80,6 +81,9 @@ def run(weights=ROOT / 'yolov5s.pt',  # model.pt path(s)
     model = DetectMultiBackend(weights, device=device, dnn=dnn)
     stride, names, pt, jit, onnx, engine = model.stride, model.names, model.pt, model.jit, model.onnx, model.engine
     imgsz = check_img_size(imgsz, s=stride)  # check image size
+
+    # 検知エリアの座標
+    x1, y1, x2, y2 = detect_area
 
     # Half
     half &= (pt or engine) and device.type != 'cpu'  # half precision only supported by PyTorch on CUDA
@@ -143,7 +147,6 @@ def run(weights=ROOT / 'yolov5s.pt',  # model.pt path(s)
             annotator = Annotator(im0, line_width=line_thickness, example=str(names))
 
             # 検知した物体のラベル
-            # detected_label = ''
             detected_label = []
             if len(det):
                 # Rescale boxes from img_size to im0 size
@@ -153,11 +156,13 @@ def run(weights=ROOT / 'yolov5s.pt',  # model.pt path(s)
                 for c in det[:, -1].unique():
                     n = (det[:, -1] == c).sum()  # detections per class
                     s += f"{n} {names[int(c)]}{'s' * (n > 1)}, "  # add to string
-                    # detected_label = names[int(c)]
-                    detected_label.append(names[int(c)])
 
                 # Write results
                 for *xyxy, conf, cls in reversed(det):
+                    # 検知エリア内か判定
+                    if xyxy[0] > x1 and xyxy[1] > y1 and xyxy[2] < x2 and xyxy[3] < y2:
+                        detected_label.append(names[int(cls)])
+
                     if save_txt:  # Write to file
                         xywh = (xyxy2xywh(torch.tensor(xyxy).view(1, 4)) / gn).view(-1).tolist()  # normalized xywh
                         line = (cls, *xywh, conf) if save_conf else (cls, *xywh)  # label format
