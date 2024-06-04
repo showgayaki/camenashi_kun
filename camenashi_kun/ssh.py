@@ -65,7 +65,6 @@ class Ssh:
                 file_date = datetime.datetime.strptime(Path(file_name).stem, '%Y%m%d-%H%M%S')
                 difference = today - file_date
 
-                print(f'{file_name}: {difference}: {difference > threshold_timedelta}')
                 # 保存期間を過ぎたら削除
                 if difference > threshold_timedelta:
                     file_path = Path(dir).joinpath(file_name)
