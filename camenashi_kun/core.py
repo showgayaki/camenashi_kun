@@ -148,6 +148,19 @@ def main(no_view=False):
         log.logging(log_level, msg)
         ping_result = False
         if log_level == 'info':
+            # 前回pingエラーを送信していたら、回復したよを送信する
+            if cfg['line']['is_notified_ping_error']:
+                # LINEに送信
+                msg = '\n★ping OK\n{}と疎通が取れました。\n検知を再開します。'.format(cfg['camera']['ip'])
+                line_result = post_line_notify(cfg['line']['notify_token'], msg)
+                log.logging(line_result['level'], 'LINE result: {}'.format(line_result['detail']))
+
+                # LINE NotifyにPOSTできたら環境変数を書き換えておく
+                if line_result['level'] == 'info':
+                    key = 'IS_NOTIFIED_PING_ERROR'
+                    cfg, before, after = config.update_value(key, False)
+                    log.logging('info', f'Environ[{key}] is updated: {before} => {after}')
+
             log.logging(log_level, 'Start streaming and detecting.')
             ping_result = True
             break
@@ -338,21 +351,23 @@ def main(no_view=False):
 
                     if use_line_notify:
                         # 上限に達したことをまだ通知してなかったら、通知する
-                        if not cfg['line']['is_notify_reached_limit']:
+                        if not cfg['line']['is_notified_reached_limit']:
                             line_result = post_line_notify(
                                 cfg['line']['notify_token'],
                                 f'\nMessagingAPIの、今月の上限({cfg["line"]["messaging_api_limit"]}回)に達しました。\
                                     \n回数は {monthly_usage}回です。'
                             )
                             # .envファイル書き換えて次回以降は通知しない
-                            cfg, before, after = config.toggle_is_notify_reached_limit(True)
-                            log.logging('info', f'Environ[IS_NOTIFY_REACHED_LIMIT] is updated: {before} => {after}')
+                            key = 'IS_NOTIFIED_REACHED_LIMIT'
+                            cfg, before, after = config.update_value(key, True)
+                            log.logging('info', f'Environ[{key}] is updated: {before} => {after}')
                     else:
                         # 上限に達していなのに通知フラグがTrue = 先月のやつ
                         # Falseに戻しておく
-                        if cfg['line']['is_notify_reached_limit']:
-                            cfg, before, after = config.toggle_is_notify_reached_limit(False)
-                            log.logging('info', f'Environ[IS_NOTIFY_REACHED_LIMIT] is updated: {before} => {after}')
+                        if cfg['line']['is_notified_reached_limit']:
+                            key = 'IS_NOTIFIED_REACHED_LIMIT'
+                            cfg, before, after = config.update_value(key, False)
+                            log.logging('info', f'Environ[{key}] is updated: {before} => {after}')
 
                     # 書き出し設定
                     fourcc = cv2.VideoWriter_fourcc('a', 'v', 'c', '1')
@@ -445,8 +460,20 @@ def main(no_view=False):
             raise e
     else:
         log.logging('error', '[{}] is NOT responding. Please check device.'.format(cfg['camera']['ip']))
-        msg = '\n★ping NG\n{}は気絶しているみたいです。'.format(cfg['camera']['ip'])
-        # エラーをLINEに送信
-        line_result = post_line_notify(cfg['line']['notify_token'], msg)
-        log.logging(line_result['level'], 'LINE result: {}'.format(line_result['detail']))
+
+        # すでにpingエラーを通知していたら何もしない
+        if cfg['line']['is_notified_ping_error']:
+            pass
+        else:
+            msg = '\n★ping NG\n{}は気絶しているみたいです。'.format(cfg['camera']['ip'])
+            # エラーをLINEに送信
+            line_result = post_line_notify(cfg['line']['notify_token'], msg)
+            log.logging(line_result['level'], 'LINE result: {}'.format(line_result['detail']))
+
+            # LINE NotifyにPOSTできたら環境変数を書き換えておく
+            if line_result['level'] == 'info':
+                key = 'IS_NOTIFIED_PING_ERROR'
+                cfg, before, after = config.update_value(key, True)
+                log.logging('info', f'Environ[{key}] is updated: {before} => {after}')
+
         log.logging('info', '===== Stop {} ====='.format(cfg['app_name']))

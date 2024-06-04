@@ -17,7 +17,8 @@ class Config:
                 'messaging_api_token': os.getenv('LINE_MESSAGING_API_ACCESS_TOKEN'),
                 'to': os.getenv('TO'),
                 'messaging_api_limit': int(os.getenv('LINE_MESSAGING_API_LIMIT')),
-                'is_notify_reached_limit': True if os.getenv('IS_NOTIFY_REACHED_LIMIT') == 'True' else False,
+                'is_notified_reached_limit': True if os.getenv('IS_NOTIFIED_REACHED_LIMIT') == 'True' else False,
+                'is_notified_ping_error': True if os.getenv('IS_NOTIFIED_PING_ERROR') == 'True' else False,
             },
             'camera': {
                 'ip': os.getenv('CAMERA_IP'),
@@ -41,9 +42,11 @@ class Config:
         }
         return conf
 
-    def toggle_is_notify_reached_limit(self, value):
-        str_value = str(value)
-        dotenv.set_key(self.dotenv_path, 'IS_NOTIFY_REACHED_LIMIT', str_value)
-        os.environ['IS_NOTIFY_REACHED_LIMIT'] = str_value
+    def update_value(self, key, after):
+        before = os.environ[key]
 
-        return self.fetch_config(), not value, value
+        str_value = str(after)
+        dotenv.set_key(self.dotenv_path, key, str_value)
+        os.environ[key] = str_value
+
+        return self.fetch_config(), before, after
