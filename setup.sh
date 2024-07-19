@@ -2,10 +2,11 @@
 
 # 仮想環境に入る
 cd `dirname $0`
+python3 -m venv .venv
 source .venv/bin/activate
 
 # Pythonバージョン取得
-python_ver=(`python3 -V`)
+python_ver=(`python -V`)
 ver=(${python_ver[1]//./ })
 PYTHON_VERSION=${ver[0]}.${ver[1]}
 
