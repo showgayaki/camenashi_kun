@@ -5,7 +5,7 @@ cd `dirname $0`
 source .venv/bin/activate
 
 # Pythonバージョン取得
-python_ver=(`python -V`)
+python_ver=(`python3 -V`)
 ver=(${python_ver[1]//./ })
 PYTHON_VERSION=${ver[0]}.${ver[1]}
 

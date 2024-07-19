@@ -24,24 +24,30 @@ CAMERA_IP=[camera ip address]
 CAMERA_USER=[camera username]
 CAMERA_PASS=[camera password]
 
-NOTICE_THRESHOLD=6
+NOTICE_THRESHOLD=10
 DETECT_LABEL=cat
-THRESHOLD_NO_DETECTED_SECONDS=30
+THRESHOLD_NO_DETECTED_SECONDS=25
 PAUSE_SECONDS=60
 BLACK_SCREEN_SECONDS=300
+MOVIE_SPEED=4
+DETECT_AREA=0,0,480,384
 
 LINE_NOTIFY_ACCESS_TOKEN=
 LINE_MESSAGING_API_ACCESS_TOKEN=
 TO=
 LINE_MESSAGING_API_LIMIT=200
-IS_NOTIFY_REACHED_LIMIT=False
-IS_NOTIFIED_PING_ERROR=False
+IS_NOTIFIED_REACHED_LIMIT='False'
+IS_NOTIFIED_PING_ERROR='False'
 
 AWS_ACCESS_KEY_ID=
 AWS_SECRET_ACCESS_KEY=
 AWS_DEFAULT_REGION=ap-northeast-1
 S3_BUCKET_NAME=camenashi-kun
-S3_EXPIRES_IN=43200
+S3_EXPIRES_IN=129600
+
+SSH_HOSTNAME=
+SSH_UPLOAD_DIR=/share/Camenashi
+THRESHOLD_STORAGE_DAYS=180
 ```
 
 ## 実行
@@ -62,6 +68,7 @@ Description=camenashi_kun
 
 [Service]
 Type=simple
+User=[user name]
 Restart=on-failure
 RestartSec=1200
 ExecStart=[path to]/camenashi_kun/run.sh --no-view
@@ -70,7 +77,12 @@ ExecStart=[path to]/camenashi_kun/run.sh --no-view
 WantedBy=multi-user.target
 ```
 RestartSec:再起動時の待機時間(秒)  
-RestartSecを設定していないと、pingでの疎通確認が取れない時に毎秒のようにメール送信される。  
 
 `sudo systemctl enable camenashi_kun.service`  
 `sudo systemctl start camenashi_kun.service`  
+
+## pingでPermission deniedになるときは
+https://github.com/kyan001/ping3/blob/master/TROUBLESHOOTING.md#permission-denied-on-linux  
+
+改行を入れたいので、以下の方がよい  
+```echo -e "# allow all users to create icmp sockets\nnet.ipv4.ping_group_range=0 2147483647\n" | sudo tee -a /etc/sysctl.d/ping_group.conf```

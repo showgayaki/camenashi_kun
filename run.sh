@@ -4,7 +4,7 @@ source .venv/bin/activate
 
 opt=$1
 if [ "$opt" = "--no-view" ]; then
-    python run.py $opt
+    python3 run.py $opt
 else
-    python run.py
+    python3 run.py
 fi

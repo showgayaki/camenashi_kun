@@ -37,9 +37,9 @@ def ping_to_target(try_count, target_ip):
     # 値が返って来なかったらエラーログ
     if res is None:
         log_level = 'error'
-        result += 'NG.'
+        result += '...NG.'
     else:
-        result += 'OK.'
+        result += '...OK.'
     return log_level, result
 
 
