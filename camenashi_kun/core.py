@@ -10,6 +10,7 @@ from statistics import mean
 from .config import Config
 from .logger import Logger
 from .line import LineNotify, LineMessagingApi
+from .discord import Discord
 from .aws import S3
 from .ssh import Ssh
 import yolov5.detect as detect
@@ -118,6 +119,12 @@ def video_message(label, urls):
         ]
     }
     return message_dict
+
+
+def post_discord(url: str, content: str, files: list[Path]):
+    disco = Discord(url)
+    message_result = disco.post(content, files)
+    return message_result
 
 
 def main(no_view=False):
@@ -285,6 +292,14 @@ def main(no_view=False):
                                 else:
                                     log.logging(remove_result['level'], 'Remove Result: {}'.format(remove_result['result']))
                                     log.logging(remove_result['level'], 'Removed Files: {}'.format(remove_result['detail']))
+
+                            # Discordに通知
+                            discord_result = post_discord(
+                                cfg['discord_webhook_url'],
+                                f'\n{cfg["detect_label"]}を動体検知しました',
+                                [video_file_path]
+                            )
+                            log.logging(discord_result['level'], 'Discord result: {}'.format(discord_result['detail']))
 
                             # 作成した画像削除
                             remove_images = []

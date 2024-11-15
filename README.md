@@ -69,8 +69,8 @@ Description=camenashi_kun
 [Service]
 Type=simple
 User=[user name]
-Restart=on-failure
-RestartSec=1200
+Restart=always
+RestartSec=10
 ExecStart=[path to]/camenashi_kun/run.sh --no-view
 
 [Install]

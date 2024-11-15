@@ -38,7 +38,8 @@ class Config:
                 'hostname': os.getenv('SSH_HOSTNAME'),
                 'upload_dir': os.getenv('SSH_UPLOAD_DIR'),
                 'threshold_storage_days': int(os.getenv('THRESHOLD_STORAGE_DAYS')),
-            }
+            },
+            'discord_webhook_url': os.getenv('DISCORD_WEBHOOK_URL'),
         }
         return conf
 
