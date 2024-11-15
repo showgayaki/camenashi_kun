@@ -121,7 +121,7 @@ def video_message(label, urls):
     return message_dict
 
 
-def post_discord(url: str, content: str, files: list[Path]):
+def post_discord(url: str, content: str, files: list[Path]=[]):
     disco = Discord(url)
     message_result = disco.post(content, files)
     return message_result
@@ -161,6 +161,9 @@ def main(no_view=False):
                 msg = '\n★ping OK\n{}と疎通が取れました。\n検知を再開します。'.format(cfg['camera']['ip'])
                 line_result = post_line_notify(cfg['line']['notify_token'], msg)
                 log.logging(line_result['level'], 'LINE result: {}'.format(line_result['detail']))
+                # Discordに通知
+                discord_result = post_discord(msg)
+                log.logging(discord_result['level'], 'Discord result: {}'.format(discord_result['detail']))
 
                 # LINE NotifyにPOSTできたら環境変数を書き換えておく
                 if line_result['level'] == 'info':
@@ -427,6 +430,9 @@ def main(no_view=False):
                         msg = ('\n映像が真っ暗になってから{}分経過しました。\nカメラをリブートした方がいいかもしれません。').format(black_screen_elapsed_minutes)
                         line_result = post_line_notify(cfg['line']['notify_token'], msg)
                         log.logging(line_result['level'], 'LINE result: {}'.format(line_result['detail']))
+                        # Discordに通知
+                        discord_result = post_discord(msg)
+                        log.logging(discord_result['level'], 'Discord result: {}'.format(discord_result['detail']))
                         # 画像削除
                         Path(image_file_path).unlink()
                         # 通知しました
@@ -455,6 +461,9 @@ def main(no_view=False):
             msg = f'\nやばいです。\n\n{e}\n\nが起きました。{cfg["pause_seconds"]}秒後に再起動します。'
             line_result = post_line_notify(cfg['line']['notify_token'], msg)
             log.logging(line_result['level'], 'LINE result: {}'.format(line_result['detail']))
+            # Discordに通知
+            discord_result = post_discord(msg)
+            log.logging(discord_result['level'], 'Discord result: {}'.format(discord_result['detail']))
             # エラー発生したら一時停止してから再起動
             log.logging('info', 'Pause detecting for {} seconds'.format(cfg['pause_seconds']))
             time.sleep(cfg['pause_seconds'])
@@ -467,6 +476,9 @@ def main(no_view=False):
             msg = f'\nやばいです。\n\n{e}\n\nが起きました。\n{cfg["pause_seconds"]}秒後に再起動します。'
             line_result = post_line_notify(cfg['line']['notify_token'], msg)
             log.logging(line_result['level'], 'LINE result: {}'.format(line_result['detail']))
+            # Discordに通知
+            discord_result = post_discord(msg)
+            log.logging(discord_result['level'], 'Discord result: {}'.format(discord_result['detail']))
             # エラー発生したら一時停止してから再起動
             log.logging('info', 'Pause detecting for {} seconds'.format(cfg['pause_seconds']))
             time.sleep(cfg['pause_seconds'])
@@ -484,6 +496,9 @@ def main(no_view=False):
             # エラーをLINEに送信
             line_result = post_line_notify(cfg['line']['notify_token'], msg)
             log.logging(line_result['level'], 'LINE result: {}'.format(line_result['detail']))
+            # Discordに通知
+            discord_result = post_discord(msg)
+            log.logging(discord_result['level'], 'Discord result: {}'.format(discord_result['detail']))
 
             # LINE NotifyにPOSTできたら環境変数を書き換えておく
             if line_result['level'] == 'info':
