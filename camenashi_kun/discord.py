@@ -1,3 +1,4 @@
+from pathlib import Path
 import requests
 
 
@@ -5,7 +6,7 @@ class Discord:
     def __init__(self, url: str) -> None:
         self.webhuook_url = url
 
-    def post(self, content: str, files: dict) -> dict:
+    def post(self, content: str, files: list[Path]) -> dict:
         # https://discord.com/developers/docs/resources/webhook
         data = {
             'content': content,
