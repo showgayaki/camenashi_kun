@@ -13,13 +13,14 @@ class Discord:
         }
 
         multiple_files = []
-        for file in files:
-            file_name = file.name
-            with open(str(file), 'rb') as f:
-                file_binary = f.read()
-            multiple_files.append(
-                (file_name, (file_name, file_binary))
-            )
+        if len(files):
+            for file in files:
+                file_name = file.name
+                with open(str(file), 'rb') as f:
+                    file_binary = f.read()
+                multiple_files.append(
+                    (file_name, (file_name, file_binary))
+                )
 
         try:
             response = requests.post(self.webhuook_url, data=data, files=multiple_files)
