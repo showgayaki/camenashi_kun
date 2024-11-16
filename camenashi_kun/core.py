@@ -121,7 +121,7 @@ def video_message(label, urls):
     return message_dict
 
 
-def post_discord(url: str, content: str, files: list[Path]=[]):
+def post_discord(url: str, content: str, files: list[Path] = []):
     disco = Discord(url)
     message_result = disco.post(content, files)
     return message_result

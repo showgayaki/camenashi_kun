@@ -1,4 +1,5 @@
 from pathlib import Path
+import random
 import requests
 
 
@@ -7,8 +8,15 @@ class Discord:
         self.webhuook_url = url
 
     def post(self, content: str, files: list[Path] = []) -> dict:
-        # https://discord.com/developers/docs/resources/webhook
+        '''
+        https://discord.com/developers/docs/resources/webhook
+        '''
+        # 連投するとアイコンなしになっちゃうので、ユーザー名を都度変えるために
+        # ランダムな絵文字を前後に挿入しておく
+        # これでユーザー名が被ることもほとんどないと思われ
+        emoji1, emoji2 = self.choice_emoji(2)
         data = {
+            'username': f'{emoji1}かめなしくん{emoji2}',
             'content': content,
         }
 
@@ -27,3 +35,26 @@ class Discord:
             return {'level': 'info', 'detail': f'StatusCode: {response.status_code}'}
         except Exception as e:
             return {'level': 'error', 'detail': e}
+
+    def choice_emoji(self, number: int) -> list:
+        emoji_list = [
+            "😀", "😃", "😄", "😁", "😆", "😅", "🤣", "😂", "🙂", "🙃",
+            "🫠", "😉", "😊", "😇", "🥰", "😍", "🤩", "😘", "😗", "☺️",
+            "☺", "😚", "😙", "🥲", "😋", "😛", "😜", "🤪", "😝", "🤑",
+            "🤗", "🤭", "🫢", "🫣", "🤫", "🤔", "🫡", "🤐", "🤨", "😐",
+            "😑", "😶", "🫥", "😶‍🌫️", "😶‍🌫", "😏", "😒", "🙄", "😬", "😮‍💨",
+            "🤥", "🫨", "😌", "😔", "😪", "🤤", "😴", "😷", "🤒", "🤕",
+            "🤢", "🤮", "🤧", "🥵", "🥶", "🥴", "😵", "😵‍💫", "🤯", "🤠",
+            "🥳", "🥸", "😎", "🤓", "🧐", "😕", "🫤", "😟", "🙁", "☹️",
+            "☹", "😮", "😯", "😲", "😳", "🥺", "🥹", "😦", "😧", "😨",
+            "😰", "😥", "😢", "😭", "😱", "😖", "😣", "😞", "😓", "😩",
+            "😫", "🥱", "😤", "😡", "😠", "🤬", "😈", "👿", "💀", "☠️",
+            "☠", "💩", "🤡", "👹", "👺", "👻", "👽", "👾", "🤖", "😺",
+            "😸", "😹", "😻", "😼", "😽", "🙀", "😿", "😾", "🙈", "🙉",
+            "🙊", "💋", "💯", "💢", "💥", "💫", "💦", "💨", "🕳️", "🕳",
+            "💬", "👁️‍🗨️", "👁‍🗨️", "👁️‍🗨", "👁‍🗨", "🗨️", "🗨", "🗯️", "🗯", "💭",
+            "💤"
+        ]
+
+        choices = random.sample(emoji_list, number)
+        return choices
