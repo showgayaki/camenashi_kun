@@ -7,7 +7,7 @@ import numpy as np
 from ping3 import ping
 from pathlib import Path
 from statistics import mean
-from .config import Config
+from .env import Env
 from .logger import Logger
 from .line import LineNotify, LineMessagingApi
 from .discord import Discord
@@ -57,17 +57,6 @@ def save_image(frame, file_name):
     return image_dir, image_file_path
 
 
-def post_line_notify(token, msg, image_file_path=None):
-    bot = LineNotify(token)
-    payload = {
-        'message': msg,
-        'stickerPackageId': None,
-        'stickerId': None
-    }
-
-    return bot.send_message(payload, image_file_path)
-
-
 def is_reached_monthly_limit(limit, monthly_usage, member_count):
     # APIの回数は、メッセージを送った人数でカウントされる
     # そのため[当月の回数 + グループ人数]が上限を超えていたら、今月はもう送れない
@@ -75,12 +64,6 @@ def is_reached_monthly_limit(limit, monthly_usage, member_count):
         return True
     else:
         return False
-
-
-def post_line_messaging_api(line, message_dict):
-    bot = LineMessagingApi(line['messaging_api_token'])
-    message_result = bot.send_message(line['to'], message_dict)
-    return message_result
 
 
 def video_message(label, urls):
@@ -121,12 +104,6 @@ def video_message(label, urls):
     return message_dict
 
 
-def post_discord(url: str, content: str, files: list[Path] = []):
-    disco = Discord(url)
-    message_result = disco.post(content, files)
-    return message_result
-
-
 def main(no_view=False):
     WEITHTS = 'yolov5/yolov5s.pt'
     IMAGE_SIZE = [384, 640]
@@ -137,38 +114,37 @@ def main(no_view=False):
     # ログ
     log = Logger(root_dir)
     # 設定読み込み
-    config = Config(root_dir)
-    cfg = config.fetch_config()
+    env = Env()
+    # 通知用
+    messaging_api = LineMessagingApi(env.LINE_MESSAGING_API_ACCESS_TOKEN)
+    line_notify = LineNotify(env.LINE_NOTIFY_ACCESS_TOKEN)
+    disco = Discord(env.DISCORD_WEBHOOK_URL)
     # アプリケーション開始ログ
-    log.logging('info', '===== {} Started on {} ====='.format(cfg['app_name'], computer_name))
-    camera_url = 'rtsp://{}:{}@{}:554/stream2'.format(
-        cfg['camera']['user'],
-        cfg['camera']['pass'],
-        cfg['camera']['ip'],
-    )
-    log.logging('info', 'Camera IP address: {}.'.format(cfg['camera']['ip']))
+    log.logging('info', f'===== {env.APP_NAME} Started on {computer_name} =====')
+    camera_url = f'rtsp://{env.CAMERA_USER}:{env.CAMERA_PASS}@{env.CAMERA_IP}:554/stream2'
+    log.logging('info', f'Camera IP address: {env.CAMERA_IP}.')
 
     # pingで疎通確認
     RETRY_COUNT = 3
     for i in range(RETRY_COUNT):
-        log_level, msg = ping_to_target(i, cfg['camera']['ip'])
+        log_level, msg = ping_to_target(i, env.CAMERA_IP)
         log.logging(log_level, msg)
         ping_result = False
         if log_level == 'info':
             # 前回pingエラーを送信していたら、回復したよを送信する
-            if cfg['line']['is_notified_ping_error']:
+            if env.IS_NOTIFIED_PING_ERROR:
                 # LINEに送信
-                msg = '\n★ping OK\n{}と疎通が取れました。\n検知を再開します。'.format(cfg['camera']['ip'])
-                line_result = post_line_notify(cfg['line']['notify_token'], msg)
-                log.logging(line_result['level'], 'LINE result: {}'.format(line_result['detail']))
+                msg = f'\n★ping OK\n{env.CAMERA_IP}と疎通が取れました。\n検知を再開します。'
+                line_result = line_notify.send_message(msg)
+                log.logging(line_result['level'], f'LINE result: {line_result["detail"]}')
                 # Discordに通知
-                discord_result = post_discord(msg)
-                log.logging(discord_result['level'], 'Discord result: {}'.format(discord_result['detail']))
+                discord_result = disco.post(msg)
+                log.logging(discord_result['level'], f'Discord result: {discord_result["detail"]}')
 
                 # LINE NotifyにPOSTできたら環境変数を書き換えておく
                 if line_result['level'] == 'info':
                     key = 'IS_NOTIFIED_PING_ERROR'
-                    cfg, before, after = config.update_value(key, False)
+                    before, after = env.update_value(key, False)
                     log.logging('info', f'Environ[{key}] is updated: {before} => {after}')
 
             log.logging(log_level, 'Start streaming and detecting.')
@@ -195,7 +171,6 @@ def main(no_view=False):
         black_screen_start = 0  # 真っ黒画面になった時間
         black_screen_elapsed_seconds = 0  # 真っ黒画面の経過時間
         is_notified_screen_all_black = False  # 映像が真っ暗になったことを通知したかフラグ
-        messaging_api = None  # MessagingAPIインスタンス
         monthly_usage = 0  # MessagingAPIの当月の回数
         use_line_notify = False  # MessagingAPIの月の上限に達したか
 
@@ -206,7 +181,7 @@ def main(no_view=False):
                 source=camera_url,
                 nosave=True,
                 view_img=view_img,
-                    detect_area=cfg['detect_area']):
+                    detect_area=env.DETECT_AREA):
                 # ループの最初で解像度を取得しておく
                 if is_first_loop:
                     frame_height, frame_width, _ = frame.shape
@@ -217,7 +192,7 @@ def main(no_view=False):
                     video_writer.write(frame)
 
                 # 検知対象リストにあるか判定
-                if cfg['detect_label'] in label_list:
+                if env.DETECT_LABEL in label_list:
                     detected_count += 1
                     # 非検知タイマーリセット
                     no_detected_start = 0
@@ -226,7 +201,7 @@ def main(no_view=False):
 
                     # 映像書き出し中以外は、ログ文言に検知回数を追記
                     if video_writer is None:
-                        log_str += ' Detected count: {}'.format(detected_count)
+                        log_str += f'Detected count: {detected_count}'
                         log.logging('info', log_str)
                 elif no_detected_start == 0:
                     # 非検知になったらタイマースタート
@@ -238,8 +213,8 @@ def main(no_view=False):
                     no_detected_elapsed_time = time.perf_counter() - no_detected_start
 
                     # 非検知秒数閾値を超えたら
-                    if no_detected_elapsed_time > cfg['threshold_no_detected_seconds']:
-                        log.logging('info', 'No detected for {} seconds.'.format(cfg['threshold_no_detected_seconds']))
+                    if no_detected_elapsed_time > env.THRESHOLD_NO_DETECTED_SECONDS:
+                        log.logging('info', f'No detected for {env.THRESHOLD_NO_DETECTED_SECONDS} seconds.')
 
                         if video_writer is None:
                             # video_writerオブジェクトがNoneの場合は、検知回数閾値に達さずに非検知になったとき
@@ -252,71 +227,69 @@ def main(no_view=False):
                             log.logging('info', '=== Reset detected count. ===')
 
                             # S3にアップロードして、アップロードしたファイルの署名付きURLを取得
-                            aws = S3(cfg['s3_bucket_name'])
+                            aws = S3(env.S3_BUCKET_NAME)
                             presigned_urls = {}
                             for key, val in {'image': image_file_path, 'video': video_file_path}.items():
                                 upload_result = aws.upload(str(val), val.name)
                                 if 'error' in upload_result:
-                                    log.logging('error', '{} Upload Result: [{}]'.format(key.capitalize(), upload_result['error']))
+                                    log.logging('error', f'{key.capitalize()} Upload Result: [{upload_result["error"]}]')
                                 else:
-                                    log.logging('info', '{} Upload Result: [{}]'.format(key.capitalize(), upload_result['info']))
-                                    presigned_url = aws.presigned_url(upload_result['info'], cfg['s3_expires_in'])
-                                    log.logging('info', 'Presigned Url: [{}]'.format(presigned_url))
+                                    log.logging('info', f'{key.capitalize()} Upload Result: [{upload_result["info"]}]')
+                                    presigned_url = aws.presigned_url(upload_result['info'], env.S3_EXPIRES_IN)
+                                    log.logging('info', f'Presigned Url: [{presigned_url}]')
                                     presigned_urls[key] = presigned_url
 
                             # LINEに通知
                             log.logging('info', 'Start post to LINE.')
                             # MessagingAPIの上限に達していたら、LINE Notifyに切り替え
                             if use_line_notify:
-                                line_result = post_line_notify(
-                                    cfg['line']['notify_token'],
-                                    f'\n{cfg["detect_label"]}を動体検知しました\n{presigned_urls["video"]}'
+                                line_result = line_notify.send_message(
+                                    f'\n{env.DETECT_LABEL}を動体検知しました\n{presigned_urls["video"]}'
                                 )
                             else:
-                                line_result = post_line_messaging_api(cfg['line'], video_message(cfg['detect_label'], presigned_urls))
+                                line_result = messaging_api.send_message(env.TO, video_message(env.DETECT_LABEL, presigned_urls))
 
-                            log.logging(line_result['level'], 'LINE result: {}'.format(line_result['detail']))
+                            log.logging(line_result['level'], f'LINE result: {line_result["detail"]}')
 
                             # SFTPでアップロード
-                            ssh = Ssh(cfg['ssh']['hostname'])
-                            log.logging('info', 'SSH to {}({})'.format(cfg['ssh']['hostname'], ssh.config['hostname']))
+                            ssh = Ssh(env.SSH_HOSTNAME)
+                            log.logging('info', f'SSH to {env.SSH_HOSTNAME}({ssh.config["hostname"]})')
                             # NASに動画をSFTPでアップロード
                             sftp_upload_result = ssh.sftp_upload(
                                 str(video_file_path),
-                                str(Path(cfg['ssh']['upload_dir']).joinpath(video_file_path.name)),
+                                str(Path(env.SSH_UPLOAD_DIR).joinpath(video_file_path.name)),
                             )
-                            log.logging(sftp_upload_result['level'], 'SFTP Upload Result: {}({})'.format(sftp_upload_result['result'], sftp_upload_result['detail']))
+                            log.logging(sftp_upload_result['level'], f'SFTP Upload Result: {sftp_upload_result["result"]}({sftp_upload_result["detail"]})')
 
                             if sftp_upload_result['level'] != 'error':
                                 # 古いファイルは削除
-                                remove_result = ssh.remove_old_files(cfg['ssh']['upload_dir'], cfg['ssh']['threshold_storage_days'])
+                                remove_result = ssh.remove_old_files(env.SSH_UPLOAD_DIR, env.THRESHOLD_STORAGE_DAYS)
                                 if remove_result is None:
-                                    log.logging('info', 'SSH server: No files are older than {} days'.format(cfg['ssh']['threshold_storage_days']))
+                                    log.logging('info', f'SSH server: No files are older than {env.THRESHOLD_STORAGE_DAYS} days')
                                 else:
-                                    log.logging(remove_result['level'], 'Remove Result: {}'.format(remove_result['result']))
-                                    log.logging(remove_result['level'], 'Removed Files: {}'.format(remove_result['detail']))
+                                    log.logging(remove_result['level'], f'Remove Result: {remove_result["result"]}')
+                                    log.logging(remove_result['level'], f'Removed Files: {remove_result["detail"]}')
 
                             # Discordに通知
-                            discord_result = post_discord(
-                                cfg['discord_webhook_url'],
-                                f'\n{cfg["detect_label"]}を動体検知しました',
+                            discord_result = disco.post(
+                                f'\n{env.DETECT_LABEL}を動体検知しました',
                                 [video_file_path]
                             )
-                            log.logging(discord_result['level'], 'Discord result: {}'.format(discord_result['detail']))
+                            log.logging(discord_result['level'], f'Discord result: {discord_result["detail"]}')
 
                             # 作成した画像削除
                             remove_images = []
                             for image in image_dir.iterdir():
                                 remove_images.append(str(image))
                                 Path(image).unlink()
-                            log.logging('info', 'Delete images: {}'.format(remove_images))
+                            log.logging('info', f'Delete images: {remove_images}')
 
                             # # 作成した映像削除
                             # remove_videos = []
                             # for video in video_dir.iterdir():
                             #     remove_videos.append(str(video))
                             #     Path(video).unlink()
-                            # log.logging('info', 'Delete videos: {}'.format(remove_videos))
+                            # log.logging('info', f'Delete videos: {remove_videos}')
 
                         log.logging('info', '=== Restart detecting ===')
                         # 初期化
@@ -328,9 +301,9 @@ def main(no_view=False):
                     continue
 
                 # 検知回数の閾値に達したら画像を保存して、動画書き出し開始
-                if detected_count == cfg['notice_threshold']:
+                if detected_count == env.NOTICE_THRESHOLD:
                     # 検知ログ
-                    log.logging('info', 'Detected: {}'.format(cfg['detect_label']))
+                    log.logging('info', f'Detected: {env.DETECT_LABEL}')
                     # ここのif文を通らないように、+1しておく
                     detected_count += 1
                     # 現在時刻取得
@@ -338,17 +311,16 @@ def main(no_view=False):
                     file_name = dt_now.strftime('%Y%m%d-%H%M%S')
                     # 画像保存
                     image_dir, image_file_path = save_image(frame, file_name)
-                    log.logging('info', 'Image saved: {}'.format(image_file_path))
+                    log.logging('info', f'Image saved: {image_file_path}')
 
                     # 動画保存用ディレクトリ
                     video_dir = Path.joinpath(Path(__file__).resolve().parent, 'videos')
                     # ディレクトリなかったら作成
                     if not video_dir.is_dir():
                         Path.mkdir(video_dir)
-                        log.logging('info', 'make directory: {}'.format(video_dir))
+                        log.logging('info', f'make directory: {video_dir}')
 
                     # MessagingAPIの当月の上限に達したかチェック
-                    messaging_api = LineMessagingApi(cfg['line']['messaging_api_token'])
                     message_quota_consumption = messaging_api.message_quota_consumption()
                     log.logging(
                         message_quota_consumption['level'],
@@ -356,35 +328,34 @@ def main(no_view=False):
                     )
 
                     monthly_usage = message_quota_consumption['totalUsage']
-                    member_count = messaging_api.group_member_count(cfg['line']['to'])
+                    member_count = messaging_api.group_member_count(env.TO)
                     log.logging(member_count['level'], f'get_group_member_count result: {member_count["detail"]}')
                     # LINE Notifyを使うか、MessagingAPIを使うか判定
                     # monthly_usageとmember_countが数字じゃない場合は、MessagingAPIに
                     # なんらかの問題が起こっていそうなので、LINE Nofityを使う
                     use_line_notify = is_reached_monthly_limit(
-                        cfg['line']['messaging_api_limit'],
+                        env.LINE_MESSAGING_API_LIMIT,
                         monthly_usage,
                         member_count['count']
                     ) if (isinstance(monthly_usage, int) and isinstance(member_count['count'], int)) else False
 
                     if use_line_notify:
-                        # 上限に達したことをまだ通知してなかったら、通知する
-                        if not cfg['line']['is_notified_reached_limit']:
-                            line_result = post_line_notify(
-                                cfg['line']['notify_token'],
-                                f'\nMessagingAPIの、今月の上限({cfg["line"]["messaging_api_limit"]}回)に達しました。\
+                        # 上限に達したことをまだ通知してなかったら、通知す
+                        if not env.IS_NOTIFIED_REACHED_LIMIT:
+                            line_result = line_notify.send_message(
+                                f'\nMessagingAPIの、今月の上限({env.LINE_MESSAGING_API_LIMIT}回)に達しました。\
                                     \n回数は {monthly_usage}回です。'
                             )
                             # .envファイル書き換えて次回以降は通知しない
                             key = 'IS_NOTIFIED_REACHED_LIMIT'
-                            cfg, before, after = config.update_value(key, True)
+                            before, after = env.update_value(key, True)
                             log.logging('info', f'Environ[{key}] is updated: {before} => {after}')
                     else:
                         # 上限に達していなのに通知フラグがTrue = 先月のやつ
                         # Falseに戻しておく
-                        if cfg['line']['is_notified_reached_limit']:
+                        if env.IS_NOTIFIED_REACHED_LIMIT:
                             key = 'IS_NOTIFIED_REACHED_LIMIT'
-                            cfg, before, after = config.update_value(key, False)
+                            before, after = env.update_value(key, False)
                             log.logging('info', f'Environ[{key}] is updated: {before} => {after}')
 
                     # 書き出し設定
@@ -394,7 +365,7 @@ def main(no_view=False):
                     # 動画書き出し
                     video_file_path = Path(video_dir).joinpath(f'{file_name}.{video_suffix}')
                     # FPSは平均を取って、何倍速か計算
-                    rec_fps = round(mean(fps_list), 0) * cfg['movie_speed']
+                    rec_fps = round(mean(fps_list), 0) * env.MOVIE_SPEED
 
                     video_writer = cv2.VideoWriter(str(video_file_path), fourcc, rec_fps, (frame_width, frame_height))
                     log.logging('info', '●●● Start Rec ●●●')
@@ -414,10 +385,10 @@ def main(no_view=False):
                         black_screen_elapsed_seconds = time.perf_counter() - black_screen_start
 
                     # 通知していなくて、指定時間経過していたら通知
-                    if not is_notified_screen_all_black and black_screen_elapsed_seconds > cfg['black_screen_seconds']:
+                    if not is_notified_screen_all_black and black_screen_elapsed_seconds > env.BLACK_SCREEN_SECONDS:
                         # 秒を分に
-                        black_screen_elapsed_minutes = int(cfg['black_screen_seconds'] / 60)
-                        log.logging('error', '{} minutes have passed since the screen went black.'.format(black_screen_elapsed_minutes))
+                        black_screen_elapsed_minutes = int(env.BLACK_SCREEN_SECONDS / 60)
+                        log.logging('error', f'{black_screen_elapsed_minutes} minutes have passed since the screen went black.')
 
                         log.logging('info', 'Start post to LINE.')
                         # 現在時刻取得
@@ -425,14 +396,14 @@ def main(no_view=False):
                         file_name = dt_now.strftime('%Y%m%d-%H%M%S')
                         # 画像保存
                         _, image_file_path = save_image(frame, file_name, False)
-                        log.logging('info', 'Image saved: {}'.format(image_file_path))
+                        log.logging('info', f'Image saved: {image_file_path}')
                         # LINEに通知
-                        msg = ('\n映像が真っ暗になってから{}分経過しました。\nカメラをリブートした方がいいかもしれません。').format(black_screen_elapsed_minutes)
-                        line_result = post_line_notify(cfg['line']['notify_token'], msg)
-                        log.logging(line_result['level'], 'LINE result: {}'.format(line_result['detail']))
+                        msg = ('\n映像が真っ暗になってから{black_screen_elapsed_minutes}分経過しました。\nカメラをリブートした方がいいかもしれません。')
+                        line_result = line_notify.send_message(msg)
+                        log.logging(line_result['level'], f'LINE result: {line_result["detail"]}')
                         # Discordに通知
-                        discord_result = post_discord(msg)
-                        log.logging(discord_result['level'], 'Discord result: {}'.format(discord_result['detail']))
+                        discord_result = disco.post(msg)
+                        log.logging(discord_result['level'], f'Discord result: {discord_result["detail"]}')
                         # 画像削除
                         Path(image_file_path).unlink()
                         # 通知しました
@@ -449,61 +420,61 @@ def main(no_view=False):
 
         except KeyboardInterrupt:
             log.logging('info', 'Ctrl + C pressed...')
-            log.logging('info', '===== Stop {} ====='.format(cfg['app_name']))
+            log.logging('info', f'===== Stop {env.APP_NAME} =====')
         except TerminatedExecption:
             log.logging('info', 'TerminatedExecption: stopped by systemd')
-            log.logging('info', '===== Stop {} ====='.format(cfg['app_name']))
+            log.logging('info', f'===== Stop {env.APP_NAME} =====')
         except OSError as e:
             import traceback
             traceback.print_exc()
-            log.logging('error', 'ERROR: {}'.format(e))
+            log.logging('error', f'ERROR: {e}')
             # エラーをLINEに送信
-            msg = f'\nやばいです。\n\n{e}\n\nが起きました。{cfg["pause_seconds"]}秒後に再起動します。'
-            line_result = post_line_notify(cfg['line']['notify_token'], msg)
-            log.logging(line_result['level'], 'LINE result: {}'.format(line_result['detail']))
+            msg = f'\nやばいです。\n\n{e}\n\nが起きました。{env.PAUSE_SECONDS}秒後に再起動します。'
+            line_result = line_notify.send_message(msg)
+            log.logging(line_result['level'], f'LINE result: {line_result["detail"]}')
             # Discordに通知
-            discord_result = post_discord(msg)
-            log.logging(discord_result['level'], 'Discord result: {}'.format(discord_result['detail']))
+            discord_result = disco.post(msg)
+            log.logging(discord_result['level'], f'Discord result: {discord_result["detail"]}')
             # エラー発生したら一時停止してから再起動
-            log.logging('info', 'Pause detecting for {} seconds'.format(cfg['pause_seconds']))
-            time.sleep(cfg['pause_seconds'])
-            log.logging('info', '*** Restart {} ***'.format(cfg['app_name']))
+            log.logging('info', f'Pause detecting for {env.PAUSE_SECONDS} seconds')
+            time.sleep(env.PAUSE_SECONDS)
+            log.logging('info', f'*** Restart {env.APP_NAME} ***')
             # systemdで再起動
             raise e
         except Exception as e:
-            log.logging('error', 'Unkown Error: {}'.format(e))
+            log.logging('error', f'Unkown Error: {e}')
             # エラーをLINEに送信
-            msg = f'\nやばいです。\n\n{e}\n\nが起きました。\n{cfg["pause_seconds"]}秒後に再起動します。'
-            line_result = post_line_notify(cfg['line']['notify_token'], msg)
-            log.logging(line_result['level'], 'LINE result: {}'.format(line_result['detail']))
+            msg = f'\nやばいです。\n\n{e}\n\nが起きました。\n{env.PAUSE_SECONDS}秒後に再起動します。'
+            line_result = line_notify.send_message(msg)
+            log.logging(line_result['level'], f'LINE result: {line_result["detail"]}')
             # Discordに通知
-            discord_result = post_discord(msg)
-            log.logging(discord_result['level'], 'Discord result: {}'.format(discord_result['detail']))
+            discord_result = disco.post(msg)
+            log.logging(discord_result['level'], f'Discord result: {discord_result["detail"]}')
             # エラー発生したら一時停止してから再起動
-            log.logging('info', 'Pause detecting for {} seconds'.format(cfg['pause_seconds']))
-            time.sleep(cfg['pause_seconds'])
-            log.logging('info', '*** Restart {} ***'.format(cfg['app_name']))
+            log.logging('info', f'Pause detecting for {env.APP_NAME} seconds')
+            time.sleep(env.PAUSE_SECONDS)
+            log.logging('info', f'*** Restart {env.APP_NAME} ***')
             # systemdで再起動
             raise e
     else:
-        log.logging('error', '[{}] is NOT responding. Please check device.'.format(cfg['camera']['ip']))
+        log.logging('error', f'[{env.CAMERA_IP}] is NOT responding. Please check device.')
 
-        # すでにpingエラーを通知していたら何もしない
-        if cfg['line']['is_notified_ping_error']:
+        # すでにpingエラーを通知していたら何もしな
+        if env.IS_NOTIFIED_PING_ERROR:
             pass
         else:
-            msg = '\n★ping NG\n{}は気絶しているみたいです。'.format(cfg['camera']['ip'])
+            msg = f'\n★ping NG\n{env.CAMERA_IP}は気絶しているみたいです。'
             # エラーをLINEに送信
-            line_result = post_line_notify(cfg['line']['notify_token'], msg)
-            log.logging(line_result['level'], 'LINE result: {}'.format(line_result['detail']))
+            line_result = line_notify.send_message(msg)
+            log.logging(line_result['level'], f'LINE result: {line_result["detail"]}')
             # Discordに通知
-            discord_result = post_discord(msg)
-            log.logging(discord_result['level'], 'Discord result: {}'.format(discord_result['detail']))
+            discord_result = disco.post(msg)
+            log.logging(discord_result['level'], f'Discord result: {discord_result["detail"]}')
 
             # LINE NotifyにPOSTできたら環境変数を書き換えておく
             if line_result['level'] == 'info':
                 key = 'IS_NOTIFIED_PING_ERROR'
-                cfg, before, after = config.update_value(key, True)
+                before, after = env.update_value(key, True)
                 log.logging('info', f'Environ[{key}] is updated: {before} => {after}')
 
-        log.logging('info', '===== Stop {} ====='.format(cfg['app_name']))
+        log.logging('info', f'===== Stop {env.APP_NAME} =====')

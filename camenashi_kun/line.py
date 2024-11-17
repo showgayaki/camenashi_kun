@@ -15,11 +15,17 @@ class LineNotify:
     }
     スタンプID: https://devdocs.line.me/files/sticker_list.pdf
     """
+
     def __init__(self, access_token):
         self.api_url = 'https://notify-api.line.me/api/notify'
         self.headers = {'Authorization': 'Bearer ' + access_token}
 
-    def send_message(self, payload, image=None):
+    def send_message(self, message, image=None):
+        payload = {
+            'message': message,
+            'stickerPackageId': None,
+            'stickerId': None
+        }
         files = {}
         if image is not None:
             files = {'imageFile': open(image, 'rb')}
