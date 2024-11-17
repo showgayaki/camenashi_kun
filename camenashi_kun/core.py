@@ -9,9 +9,7 @@ from pathlib import Path
 from statistics import mean
 from .env import Env
 from .logger import Logger
-from .line import LineNotify, LineMessagingApi
 from .discord import Discord
-from .aws import S3
 from .ssh import Ssh
 import yolov5.detect as detect
 
@@ -44,66 +42,6 @@ def ping_to_target(try_count, target_ip):
     return log_level, result
 
 
-def save_image(frame, file_name):
-    image_dir = Path.joinpath(Path(__file__).resolve().parent, 'images')
-    # ディレクトリなかったら作成
-    if not image_dir.is_dir():
-        Path.mkdir(image_dir)
-
-    # 画像保存パス、stringじゃないといけない
-    image_file_path = Path.joinpath(image_dir, f'{file_name}.png')
-    # 画像保存
-    cv2.imwrite(str(image_file_path), frame)
-    return image_dir, image_file_path
-
-
-def is_reached_monthly_limit(limit, monthly_usage, member_count):
-    # APIの回数は、メッセージを送った人数でカウントされる
-    # そのため[当月の回数 + グループ人数]が上限を超えていたら、今月はもう送れない
-    if (monthly_usage + member_count) > limit:
-        return True
-    else:
-        return False
-
-
-def video_message(label, urls):
-    message_dict = {
-        'messages': [
-            {
-                'type': 'flex',
-                'altText': f'{label}を動体検知しました',
-                'contents': {
-                    'type': 'bubble',
-                    'hero': {
-                        'type': 'video',
-                        'url': urls['video'],
-                        'previewUrl': urls['image'],
-                        'altContent': {
-                            'type': 'image',
-                            'size': 'full',
-                            'aspectRatio': '5:3',
-                            'aspectMode': 'cover',
-                            'url': urls['image']
-                        },
-                        'aspectRatio': '5:3'
-                    },
-                    'body': {
-                        'type': 'box',
-                        'layout': 'vertical',
-                        'contents': [
-                            {
-                                'type': 'text',
-                                'text': f'{label}を動体検知しました'
-                            }
-                        ]
-                    }
-                }
-            }
-        ]
-    }
-    return message_dict
-
-
 def main(no_view=False):
     WEITHTS = 'yolov5/yolov5s.pt'
     IMAGE_SIZE = [384, 640]
@@ -116,8 +54,6 @@ def main(no_view=False):
     # 設定読み込み
     env = Env()
     # 通知用
-    messaging_api = LineMessagingApi(env.LINE_MESSAGING_API_ACCESS_TOKEN)
-    line_notify = LineNotify(env.LINE_NOTIFY_ACCESS_TOKEN)
     disco = Discord(env.DISCORD_WEBHOOK_URL)
     # アプリケーション開始ログ
     log.logging('info', f'===== {env.APP_NAME} Started on {computer_name} =====')
@@ -133,19 +69,10 @@ def main(no_view=False):
         if log_level == 'info':
             # 前回pingエラーを送信していたら、回復したよを送信する
             if env.IS_NOTIFIED_PING_ERROR:
-                # LINEに送信
-                msg = f'\n★ping OK\n{env.CAMERA_IP}と疎通が取れました。\n検知を再開します。'
-                line_result = line_notify.send_message(msg)
-                log.logging(line_result['level'], f'LINE result: {line_result["detail"]}')
                 # Discordに通知
+                msg = f'\n★ping OK\n{env.CAMERA_IP}と疎通が取れました。\n検知を再開します。'
                 discord_result = disco.post(msg)
                 log.logging(discord_result['level'], f'Discord result: {discord_result["detail"]}')
-
-                # LINE NotifyにPOSTできたら環境変数を書き換えておく
-                if line_result['level'] == 'info':
-                    key = 'IS_NOTIFIED_PING_ERROR'
-                    before, after = env.update_value(key, False)
-                    log.logging('info', f'Environ[{key}] is updated: {before} => {after}')
 
             log.logging(log_level, 'Start streaming and detecting.')
             ping_result = True
@@ -171,8 +98,6 @@ def main(no_view=False):
         black_screen_start = 0  # 真っ黒画面になった時間
         black_screen_elapsed_seconds = 0  # 真っ黒画面の経過時間
         is_notified_screen_all_black = False  # 映像が真っ暗になったことを通知したかフラグ
-        monthly_usage = 0  # MessagingAPIの当月の回数
-        use_line_notify = False  # MessagingAPIの月の上限に達したか
 
         try:
             for label_list, frame, fps, log_str in detect.run(
@@ -226,31 +151,6 @@ def main(no_view=False):
                             log.logging('info', '○○○ Finish Rec ○○○')
                             log.logging('info', '=== Reset detected count. ===')
 
-                            # S3にアップロードして、アップロードしたファイルの署名付きURLを取得
-                            aws = S3(env.S3_BUCKET_NAME)
-                            presigned_urls = {}
-                            for key, val in {'image': image_file_path, 'video': video_file_path}.items():
-                                upload_result = aws.upload(str(val), val.name)
-                                if 'error' in upload_result:
-                                    log.logging('error', f'{key.capitalize()} Upload Result: [{upload_result["error"]}]')
-                                else:
-                                    log.logging('info', f'{key.capitalize()} Upload Result: [{upload_result["info"]}]')
-                                    presigned_url = aws.presigned_url(upload_result['info'], env.S3_EXPIRES_IN)
-                                    log.logging('info', f'Presigned Url: [{presigned_url}]')
-                                    presigned_urls[key] = presigned_url
-
-                            # LINEに通知
-                            log.logging('info', 'Start post to LINE.')
-                            # MessagingAPIの上限に達していたら、LINE Notifyに切り替え
-                            if use_line_notify:
-                                line_result = line_notify.send_message(
-                                    f'\n{env.DETECT_LABEL}を動体検知しました\n{presigned_urls["video"]}'
-                                )
-                            else:
-                                line_result = messaging_api.send_message(env.TO, video_message(env.DETECT_LABEL, presigned_urls))
-
-                            log.logging(line_result['level'], f'LINE result: {line_result["detail"]}')
-
                             # SFTPでアップロード
                             ssh = Ssh(env.SSH_HOSTNAME)
                             log.logging('info', f'SSH to {env.SSH_HOSTNAME}({ssh.config["hostname"]})')
@@ -300,7 +200,7 @@ def main(no_view=False):
 
                     continue
 
-                # 検知回数の閾値に達したら画像を保存して、動画書き出し開始
+                # 検知回数の閾値に達したら動画書き出し開始
                 if detected_count == env.NOTICE_THRESHOLD:
                     # 検知ログ
                     log.logging('info', f'Detected: {env.DETECT_LABEL}')
@@ -309,9 +209,6 @@ def main(no_view=False):
                     # 現在時刻取得
                     dt_now = datetime.datetime.now()
                     file_name = dt_now.strftime('%Y%m%d-%H%M%S')
-                    # 画像保存
-                    image_dir, image_file_path = save_image(frame, file_name)
-                    log.logging('info', f'Image saved: {image_file_path}')
 
                     # 動画保存用ディレクトリ
                     video_dir = Path.joinpath(Path(__file__).resolve().parent, 'videos')
@@ -319,44 +216,6 @@ def main(no_view=False):
                     if not video_dir.is_dir():
                         Path.mkdir(video_dir)
                         log.logging('info', f'make directory: {video_dir}')
-
-                    # MessagingAPIの当月の上限に達したかチェック
-                    message_quota_consumption = messaging_api.message_quota_consumption()
-                    log.logging(
-                        message_quota_consumption['level'],
-                        f'get_message_quota_consumption result: {message_quota_consumption["detail"]}'
-                    )
-
-                    monthly_usage = message_quota_consumption['totalUsage']
-                    member_count = messaging_api.group_member_count(env.TO)
-                    log.logging(member_count['level'], f'get_group_member_count result: {member_count["detail"]}')
-                    # LINE Notifyを使うか、MessagingAPIを使うか判定
-                    # monthly_usageとmember_countが数字じゃない場合は、MessagingAPIに
-                    # なんらかの問題が起こっていそうなので、LINE Nofityを使う
-                    use_line_notify = is_reached_monthly_limit(
-                        env.LINE_MESSAGING_API_LIMIT,
-                        monthly_usage,
-                        member_count['count']
-                    ) if (isinstance(monthly_usage, int) and isinstance(member_count['count'], int)) else False
-
-                    if use_line_notify:
-                        # 上限に達したことをまだ通知してなかったら、通知す
-                        if not env.IS_NOTIFIED_REACHED_LIMIT:
-                            line_result = line_notify.send_message(
-                                f'\nMessagingAPIの、今月の上限({env.LINE_MESSAGING_API_LIMIT}回)に達しました。\
-                                    \n回数は {monthly_usage}回です。'
-                            )
-                            # .envファイル書き換えて次回以降は通知しない
-                            key = 'IS_NOTIFIED_REACHED_LIMIT'
-                            before, after = env.update_value(key, True)
-                            log.logging('info', f'Environ[{key}] is updated: {before} => {after}')
-                    else:
-                        # 上限に達していなのに通知フラグがTrue = 先月のやつ
-                        # Falseに戻しておく
-                        if env.IS_NOTIFIED_REACHED_LIMIT:
-                            key = 'IS_NOTIFIED_REACHED_LIMIT'
-                            before, after = env.update_value(key, False)
-                            log.logging('info', f'Environ[{key}] is updated: {before} => {after}')
 
                     # 書き出し設定
                     fourcc = cv2.VideoWriter_fourcc('a', 'v', 'c', '1')
@@ -372,7 +231,7 @@ def main(no_view=False):
 
                     continue
 
-                # 4角が真っ黒なら映像取得できていないはず。指定秒数経過したらLINEで通知する。
+                # 4角が真っ黒なら映像取得できていないはず。指定秒数経過したら通知する。
                 if (np.all(frame[0][0] == BLACK_COLOR_CODE) and np.all(frame[0][frame_width - 1] == BLACK_COLOR_CODE)
                         and np.all(frame[frame_height - 1][frame_width - 1] == BLACK_COLOR_CODE) and np.all(frame[frame_height - 1][0] == BLACK_COLOR_CODE)):
                     # 真っ黒画面になってからの経過時間を計測
@@ -390,18 +249,12 @@ def main(no_view=False):
                         black_screen_elapsed_minutes = int(env.BLACK_SCREEN_SECONDS / 60)
                         log.logging('error', f'{black_screen_elapsed_minutes} minutes have passed since the screen went black.')
 
-                        log.logging('info', 'Start post to LINE.')
+                        log.logging('info', 'Start post to Discord.')
                         # 現在時刻取得
                         dt_now = datetime.datetime.now()
                         file_name = dt_now.strftime('%Y%m%d-%H%M%S')
-                        # 画像保存
-                        _, image_file_path = save_image(frame, file_name, False)
-                        log.logging('info', f'Image saved: {image_file_path}')
-                        # LINEに通知
-                        msg = ('\n映像が真っ暗になってから{black_screen_elapsed_minutes}分経過しました。\nカメラをリブートした方がいいかもしれません。')
-                        line_result = line_notify.send_message(msg)
-                        log.logging(line_result['level'], f'LINE result: {line_result["detail"]}')
                         # Discordに通知
+                        msg = ('\n映像が真っ暗になってから{black_screen_elapsed_minutes}分経過しました。\nカメラをリブートした方がいいかもしれません。')
                         discord_result = disco.post(msg)
                         log.logging(discord_result['level'], f'Discord result: {discord_result["detail"]}')
                         # 画像削除
@@ -428,11 +281,8 @@ def main(no_view=False):
             import traceback
             traceback.print_exc()
             log.logging('error', f'ERROR: {e}')
-            # エラーをLINEに送信
-            msg = f'\nやばいです。\n\n{e}\n\nが起きました。{env.PAUSE_SECONDS}秒後に再起動します。'
-            line_result = line_notify.send_message(msg)
-            log.logging(line_result['level'], f'LINE result: {line_result["detail"]}')
             # Discordに通知
+            msg = f'\nやばいです。\n\n{e}\n\nが起きました。{env.PAUSE_SECONDS}秒後に再起動します。'
             discord_result = disco.post(msg)
             log.logging(discord_result['level'], f'Discord result: {discord_result["detail"]}')
             # エラー発生したら一時停止してから再起動
@@ -443,11 +293,8 @@ def main(no_view=False):
             raise e
         except Exception as e:
             log.logging('error', f'Unkown Error: {e}')
-            # エラーをLINEに送信
-            msg = f'\nやばいです。\n\n{e}\n\nが起きました。\n{env.PAUSE_SECONDS}秒後に再起動します。'
-            line_result = line_notify.send_message(msg)
-            log.logging(line_result['level'], f'LINE result: {line_result["detail"]}')
             # Discordに通知
+            msg = f'\nやばいです。\n\n{e}\n\nが起きました。\n{env.PAUSE_SECONDS}秒後に再起動します。'
             discord_result = disco.post(msg)
             log.logging(discord_result['level'], f'Discord result: {discord_result["detail"]}')
             # エラー発生したら一時停止してから再起動
@@ -463,18 +310,9 @@ def main(no_view=False):
         if env.IS_NOTIFIED_PING_ERROR:
             pass
         else:
-            msg = f'\n★ping NG\n{env.CAMERA_IP}は気絶しているみたいです。'
-            # エラーをLINEに送信
-            line_result = line_notify.send_message(msg)
-            log.logging(line_result['level'], f'LINE result: {line_result["detail"]}')
             # Discordに通知
+            msg = f'\n★ping NG\n{env.CAMERA_IP}は気絶しているみたいです。'
             discord_result = disco.post(msg)
             log.logging(discord_result['level'], f'Discord result: {discord_result["detail"]}')
-
-            # LINE NotifyにPOSTできたら環境変数を書き換えておく
-            if line_result['level'] == 'info':
-                key = 'IS_NOTIFIED_PING_ERROR'
-                before, after = env.update_value(key, True)
-                log.logging('info', f'Environ[{key}] is updated: {before} => {after}')
 
         log.logging('info', f'===== Stop {env.APP_NAME} =====')
