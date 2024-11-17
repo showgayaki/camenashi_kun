@@ -6,7 +6,9 @@ from dotenv import load_dotenv
 class Env:
     def __init__(self) -> None:
         load_dotenv()
+        self._load()
 
+    def _load(self) -> None:
         self.APP_NAME = 'Camenashi Kun'
         self.LINE_NOTIFY_ACCESS_TOKEN = os.getenv('LINE_NOTIFY_ACCESS_TOKEN')
         self.LINE_MESSAGING_API_ACCESS_TOKEN = os.getenv('LINE_MESSAGING_API_ACCESS_TOKEN')
@@ -36,7 +38,7 @@ class Env:
 
         self.DISCORD_WEBHOOK_URL = os.getenv('DISCORD_WEBHOOK_URL')
 
-    def update_value(self, key, after):
+    def update_value(self, key: str, after) -> tuple[str, object]:
         before = os.environ[key]
 
         str_value = str(after)
@@ -45,4 +47,5 @@ class Env:
         os.environ[key] = str_value
 
         load_dotenv()
+        self._load()
         return before, after
