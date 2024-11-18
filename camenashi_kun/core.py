@@ -177,13 +177,6 @@ def main(no_view=False):
                             )
                             log.logging(discord_result['level'], f'Discord result: {discord_result["detail"]}')
 
-                            # 作成した画像削除
-                            remove_images = []
-                            for image in image_dir.iterdir():
-                                remove_images.append(str(image))
-                                Path(image).unlink()
-                            log.logging('info', f'Delete images: {remove_images}')
-
                             # # 作成した映像削除
                             # remove_videos = []
                             # for video in video_dir.iterdir():
