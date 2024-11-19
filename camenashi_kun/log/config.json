@@ -1,0 +1,51 @@
+{
+    "version": 1,
+    "disable_existing_loggers": false,
+    "formatters": {
+      "default": {
+        "format": "%(asctime)s | %(levelname)-8s | %(filename)-10s: %(lineno)-4s | %(message)s"
+      }
+    },
+    "handlers": {
+      "consoleHandler": {
+        "class": "logging.StreamHandler",
+        "level": "DEBUG",
+        "formatter": "default",
+        "stream": "ext://sys.stdout"
+      },
+      "rotatingFileHandler": {
+        "class": "logging.handlers.RotatingFileHandler",
+        "level": "DEBUG",
+        "formatter": "default",
+        "filename": "camenashi_kun/log/camenashi_kun.log",
+        "encoding": "utf-8",
+        "maxBytes": 1048576,
+        "backupCount": 3
+      }
+    },
+    "loggers": {
+      "__main__": {
+        "level": "INFO",
+        "handlers": ["consoleHandler", "rotatingFileHandler"]
+      },
+      "camenashi_kun.core": {
+        "level": "INFO",
+        "handlers": ["consoleHandler", "rotatingFileHandler"]
+      },
+      "camenashi_kun.env": {
+        "level": "INFO",
+        "handlers": ["consoleHandler", "rotatingFileHandler"]
+      },
+      "camenashi_kun.ssh": {
+        "level": "INFO",
+        "handlers": ["consoleHandler", "rotatingFileHandler"]
+      },
+      "camenashi_kun.discord": {
+        "level": "INFO",
+        "handlers": ["consoleHandler", "rotatingFileHandler"]
+      }
+    },
+    "root": {
+      "level": "ERROR"
+    }
+  }

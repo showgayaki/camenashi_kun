@@ -1,6 +1,10 @@
 import paramiko
-from pathlib import Path
 import datetime
+from pathlib import Path
+from logging import getLogger
+
+
+logger = getLogger(__name__)
 
 
 class Ssh:
@@ -15,7 +19,10 @@ class Ssh:
         if 'port' not in self.config:
             self.config['port'] = 22
 
-    def sftp_upload(self, local, server):
+        logger.info(f'ssh config => {self.config}')
+
+    def sftp_upload(self, local, server) -> bool:
+        logger.info('Starting SFTP upload.')
         client = paramiko.SSHClient()
         client.set_missing_host_key_policy(paramiko.WarningPolicy())
         client.load_system_host_keys()
@@ -28,13 +35,16 @@ class Ssh:
             )
             sftp_connection = client.open_sftp()
             sftp_connection.put(local, server)
-            return {'level': 'info', 'result': 'Succeeded', 'detail': local}
+            logger.info(f'SFTP uploaded: {server}')
+            return True
         except Exception as e:
-            return {'level': 'error', 'result': 'Failed', 'detail': str(e)}
+            logger.error(e)
+            return False
         finally:
             client.close()
 
-    def remove_old_files(self, dir, threshold_storage_days):
+    def remove_old_files(self, dir, threshold_storage_days) -> None:
+        logger.info('Starting remove old files on SSH server.')
         client = paramiko.SSHClient()
         client.set_missing_host_key_policy(paramiko.WarningPolicy())
         client.load_system_host_keys()
@@ -70,13 +80,14 @@ class Ssh:
                     file_path = Path(dir).joinpath(file_name)
                     removed_files.append(str(file_path))
                     client.exec_command('rm {}'.format(file_path))
+                    logger.info(f'Remove file: {file_path}')
 
             if len(removed_files) == 0:
-                return None
-            return {'level': 'info', 'result': 'Succeeded', 'detail': removed_files}
+                logger.info('No files found to delete on the SSH server.')
+            else:
+                logger.info(f'Removed files: {removed_files}')
         except Exception as e:
-            print(e)
-            return {'level': 'error', 'result': 'Failed', 'detail': str(e)}
+            logger.error(e)
         finally:
             client.close()
             del client, stdin, stdout, stderr

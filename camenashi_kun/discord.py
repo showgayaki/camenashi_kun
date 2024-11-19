@@ -1,13 +1,17 @@
 from pathlib import Path
+from logging import getLogger
 import random
+
 import requests
+
+logger = getLogger(__name__)
 
 
 class Discord:
     def __init__(self, url: str) -> None:
         self.webhuook_url = url
 
-    def post(self, content: str, files: list[Path] = []) -> dict:
+    def post(self, content: str, files: list[Path] = []) -> None:
         '''
         https://discord.com/developers/docs/resources/webhook
         '''
@@ -22,6 +26,7 @@ class Discord:
 
         multiple_files = []
         if len(files):
+            logger.info(f'Post files: {files}.')
             for file in files:
                 file_name = file.name
                 with open(str(file), 'rb') as f:
@@ -31,30 +36,30 @@ class Discord:
                 )
 
         try:
+            logger.info('Start to post Discord.')
             response = requests.post(self.webhuook_url, data=data, files=multiple_files)
-            return {'level': 'info', 'detail': f'StatusCode: {response.status_code}'}
+            logger.info(f'Status Code: {response.status_code}')
         except Exception as e:
-            return {'level': 'error', 'detail': e}
+            logger.critical(e)
 
     def _choice_emoji(self, number: int) -> list:
         emoji_list = [
             "😀", "😃", "😄", "😁", "😆", "😅", "🤣", "😂", "🙂", "🙃",
-            "🫠", "😉", "😊", "😇", "🥰", "😍", "🤩", "😘", "😗", "☺️",
-            "☺", "😚", "😙", "🥲", "😋", "😛", "😜", "🤪", "😝", "🤑",
-            "🤗", "🤭", "🫢", "🫣", "🤫", "🤔", "🫡", "🤐", "🤨", "😐",
-            "😑", "😶", "🫥", "😶‍🌫️", "😶‍🌫", "😏", "😒", "🙄", "😬", "😮‍💨",
+            "🫠", "😉", "😊", "😇", "🥰", "😍", "🤩", "😘", "😗", "😚",
+            "😙", "🥲", "😋", "😛", "😜", "🤪", "😝", "🤑", "🤗", "🤭",
+            "🫢", "🫣", "🤫", "🤔", "🫡", "🤐", "🤨", "😐", "😑", "😶",
+            "🫥", "😶‍🌫️", "😶‍🌫", "😏", "😒", "🙄", "😬", "😮‍💨", "🤥", "🫨",
             "🤥", "🫨", "😌", "😔", "😪", "🤤", "😴", "😷", "🤒", "🤕",
             "🤢", "🤮", "🤧", "🥵", "🥶", "🥴", "😵", "😵‍💫", "🤯", "🤠",
-            "🥳", "🥸", "😎", "🤓", "🧐", "😕", "🫤", "😟", "🙁", "☹️",
-            "☹", "😮", "😯", "😲", "😳", "🥺", "🥹", "😦", "😧", "😨",
-            "😰", "😥", "😢", "😭", "😱", "😖", "😣", "😞", "😓", "😩",
-            "😫", "🥱", "😤", "😡", "😠", "🤬", "😈", "👿", "💀", "☠️",
-            "☠", "💩", "🤡", "👹", "👺", "👻", "👽", "👾", "🤖", "😺",
-            "😸", "😹", "😻", "😼", "😽", "🙀", "😿", "😾", "🙈", "🙉",
-            "🙊", "💋", "💯", "💢", "💥", "💫", "💦", "💨", "🕳️", "🕳",
-            "💬", "👁️‍🗨️", "👁‍🗨️", "👁️‍🗨", "👁‍🗨", "🗨️", "🗨", "🗯️", "🗯", "💭",
-            "💤"
+            "🥳", "🥸", "😎", "🤓", "🧐", "😕", "🫤", "😟", "🙁", "😮",
+            "😯", "😲", "😳", "🥺", "🥹", "😦", "😧", "😨", "😰", "😥",
+            "😢", "😭", "😱", "😖", "😣", "😞", "😓", "😩", "😫", "🥱",
+            "😤", "😡", "😠", "🤬", "😈", "👿", "💀", "💩", "🤡", "👹",
+            "👺", "👻", "👽", "🤖", "😺", "😸", "😹", "😻", "😼", "😽",
+            "🙀", "😿", "😾", "🙈", "🙉", "🙊", "💋", "💯", "💫", "💦",
+            "💨",
         ]
 
         choices = random.sample(emoji_list, number)
+        logger.info(f'Choiced emoji: {choices}')
         return choices
