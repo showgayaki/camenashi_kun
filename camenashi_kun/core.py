@@ -66,6 +66,8 @@ def main(no_view=False) -> None:
 
     # 疎通確認が取れたら実行
     if ping_result:
+        logger.info('Start streaming and detecting.')
+
         BLACK_COLOR_CODE = 0
         detected_count = 0  # 検知回数
         image_file_path = ''  # キャプチャ画像パス
