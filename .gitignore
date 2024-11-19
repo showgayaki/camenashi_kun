@@ -3,7 +3,7 @@ memo.md
 __pycache__/
 .env
 .venv/
-*.log
+*.log*
 camenashi_kun/images/
 camenashi_kun/videos/
 
