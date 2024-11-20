@@ -29,6 +29,7 @@ class Env:
         self.THRESHOLD_STORAGE_DAYS = int(os.getenv('THRESHOLD_STORAGE_DAYS'))
 
         self.DISCORD_WEBHOOK_URL = os.getenv('DISCORD_WEBHOOK_URL')
+        self.EMOJI_API_URL = os.getenv('EMOJI_API_URL')
 
     def update_value(self, key: str, after) -> tuple[str, object]:
         before = os.environ[key]

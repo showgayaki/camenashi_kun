@@ -6,6 +6,7 @@ __pycache__/
 *.log*
 camenashi_kun/images/
 camenashi_kun/videos/
+emoji.py
 
 checkpoint/
 train/

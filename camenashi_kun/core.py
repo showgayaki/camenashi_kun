@@ -70,9 +70,8 @@ def main(no_view=False) -> None:
 
         BLACK_COLOR_CODE = 0
         detected_count = 0  # 検知回数
-        image_file_path = ''  # キャプチャ画像パス
-        video_dir = ''  # 録画映像保存用ディレクトリ
-        video_file_path = ''  # 録画映像ファイル
+        video_dir = Path.joinpath(Path(__file__).resolve().parent, 'videos')  # 録画映像保存用ディレクトリ
+        video_file_path = Path()  # 録画映像ファイル
         video_writer = None  # opencvのvideo writer
         fps_list = []  # 録画映像のFPS
         no_detected_start = 0  # 非検知秒数のカウント用
@@ -222,8 +221,6 @@ def main(no_view=False) -> None:
                         file_name = dt_now.strftime('%Y%m%d-%H%M%S')
                         # Discordに通知
                         disco.post(f'\n映像が真っ暗になってから{black_screen_elapsed_minutes}分経過しました。\nカメラをリブートした方がいいかもしれません。')
-                        # 画像削除
-                        Path(image_file_path).unlink()
                         # 通知しました
                         is_notified_screen_all_black = True
                     else:
