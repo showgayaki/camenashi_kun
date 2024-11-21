@@ -8,7 +8,7 @@ logger = getLogger(__name__)
 
 
 class Ssh:
-    def __init__(self, hostname):
+    def __init__(self, hostname: str) -> None:
         ssh_config = paramiko.SSHConfig()
         config_file_path = str(Path.home().joinpath('.ssh', 'config'))
 
@@ -21,7 +21,7 @@ class Ssh:
 
         logger.info(f'ssh config => {self.config}')
 
-    def sftp_upload(self, local, server) -> bool:
+    def sftp_upload(self, local: str, server: str) -> bool:
         logger.info('Starting SFTP upload.')
         client = paramiko.SSHClient()
         client.set_missing_host_key_policy(paramiko.WarningPolicy())
@@ -43,7 +43,7 @@ class Ssh:
         finally:
             client.close()
 
-    def remove_old_files(self, dir, threshold_storage_days) -> None:
+    def remove_old_files(self, dir: str, threshold_storage_days: int) -> None:
         logger.info('Starting remove old files on SSH server.')
         client = paramiko.SSHClient()
         client.set_missing_host_key_policy(paramiko.WarningPolicy())

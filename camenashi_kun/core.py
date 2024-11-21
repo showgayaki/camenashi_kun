@@ -27,7 +27,7 @@ def raise_exception(*_):
     raise TerminatedExecption()
 
 
-def ping_to_target(target_ip) -> bool:
+def ping_to_target(target_ip: str) -> bool:
     RETRY_COUNT = 3
     for i in range(RETRY_COUNT):
         result = f'Ping Try Count {i + 1}: Connect to {target_ip} is '
@@ -54,18 +54,12 @@ def ping_to_target(target_ip) -> bool:
 
 
 def main(no_view=False) -> None:
-    WEITHTS = 'yolov5/yolov5s.pt'
-    IMAGE_SIZE = [384, 640]
     # systemdの終了を受け取る
     signal.signal(signal.SIGTERM, raise_exception)
-    camera_url = f'rtsp://{env.CAMERA_USER}:{env.CAMERA_PASS}@{env.CAMERA_IP}:554/stream2'
     logger.info(f'Camera IP address: {env.CAMERA_IP}.')
 
-    # pingで疎通確認
-    ping_result = ping_to_target(env.CAMERA_IP)
-
-    # 疎通確認が取れたら実行
-    if ping_result:
+    # pingで疎通確認が取れたら実行
+    if ping_to_target(env.CAMERA_IP):
         logger.info('Start streaming and detecting.')
 
         BLACK_COLOR_CODE = 0
@@ -84,12 +78,13 @@ def main(no_view=False) -> None:
 
         try:
             for label_list, frame, fps, log_str in detect.run(
-                weights=WEITHTS,
-                imgsz=IMAGE_SIZE,
-                source=camera_url,
+                weights='yolov5/yolov5s.pt',
+                imgsz=[384, 640],
+                source=f'rtsp://{env.CAMERA_USER}:{env.CAMERA_PASS}@{env.CAMERA_IP}:554/stream2',
                 nosave=True,
                 view_img=view_img,
-                    detect_area=env.DETECT_AREA):
+                detect_area=env.DETECT_AREA
+            ):
                 # ループの最初で解像度を取得しておく
                 if is_first_loop:
                     frame_height, frame_width, _ = frame.shape
@@ -147,15 +142,23 @@ def main(no_view=False) -> None:
                             if sftp_upload_result:
                                 ssh.remove_old_files(env.SSH_UPLOAD_DIR, env.THRESHOLD_STORAGE_DAYS)
 
-                            # Discordに通知
-                            disco.post(f'\n{env.DETECT_LABEL}を動体検知しました', [video_file_path])
-
-                            # # 作成した映像削除
-                            # remove_videos = []
-                            # for video in video_dir.iterdir():
-                            #     remove_videos.append(str(video))
-                            #     Path(video).unlink()
-                            # logger.info(f'Delete videos: {remove_videos}')
+                            # Discordに通知できた映像は削除する
+                            # 以前POSTに失敗したファイルもvideosディレクトリに残っているはずなので
+                            # ここで順番にPOSTする
+                            removed_videos = []
+                            sorted_videos = sorted(video_dir.iterdir(), key=lambda x: x.name)
+                            for video in sorted_videos:
+                                if disco.post(f'{env.DETECT_LABEL}を動体検知しました', [video]):
+                                    removed_videos.append(str(video))
+                                    # 削除
+                                    Path(video).unlink()
+                                    # 動画が複数あれば、次のPOSTまでちょっと待機
+                                    if len(sorted_videos) > 1:
+                                        time.sleep(3)
+                                else:
+                                    # POSTに失敗したら、以降のファイルは次回に持ち越し
+                                    break
+                            logger.info(f'Delete videos: {removed_videos}')
 
                         logger.info('=== Restart detecting ===')
                         # 初期化
