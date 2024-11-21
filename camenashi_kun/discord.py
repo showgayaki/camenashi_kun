@@ -14,7 +14,7 @@ class Discord:
         self.webhuook_url = url
         self.timeout = (3, 6)
 
-    def post(self, content: str, files: list[Path] = []) -> None:
+    def post(self, content: str, files: list[Path] = []) -> bool:
         '''
         https://discord.com/developers/docs/resources/webhook
         '''
@@ -47,8 +47,12 @@ class Discord:
                 timeout=self.timeout
             )
             logger.info(f'Status Code: {response.status_code}')
+            if 200 <= response.status_code < 300:
+                return True
         except Exception as e:
             logger.critical(e)
+
+        return False
 
     def _choice_emoji(self, number: int) -> list:
         logger.info(f'Starting fetch emojis from {env.EMOJI_API_URL}')

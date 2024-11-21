@@ -12,3 +12,4 @@ checkpoint/
 train/
 val/
 *_video.txt
+mmaction2/

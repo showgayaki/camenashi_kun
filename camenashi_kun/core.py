@@ -220,9 +220,9 @@ def main(no_view=False) -> None:
                         dt_now = datetime.datetime.now()
                         file_name = dt_now.strftime('%Y%m%d-%H%M%S')
                         # Discordに通知
-                        disco.post(f'\n映像が真っ暗になってから{black_screen_elapsed_minutes}分経過しました。\nカメラをリブートした方がいいかもしれません。')
-                        # 通知しました
-                        is_notified_screen_all_black = True
+                        is_notified_screen_all_black = disco.post(
+                            f'\n映像が真っ暗になってから{black_screen_elapsed_minutes}分経過しました。\nカメラをリブートした方がいいかもしれません。'
+                        )
                     else:
                         continue
                 elif black_screen_elapsed_seconds > 0:
@@ -262,9 +262,12 @@ def main(no_view=False) -> None:
     else:
         logger.error(f'[{env.CAMERA_IP}] is NOT responding. Please check device.')
 
-        # すでにpingエラーを通知していたら何もしな
+        # すでにpingエラーを通知していたら何もしない
         if env.IS_NOTIFIED_PING_ERROR:
             pass
         else:
-            # Discordに通知
-            disco.post(f'\n★ping NG\n{env.CAMERA_IP}は気絶しているみたいです。')
+            # Discordに通知できたら.env書き換え
+            env.update_value(
+                'IS_NOTIFIED_PING_ERROR',
+                disco.post(f'\n★ping NG\n{env.CAMERA_IP}は気絶しているみたいです。')
+            )
