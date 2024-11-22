@@ -46,8 +46,6 @@ thop  # FLOPs computation
 # camknashi kun -------------------------------
 python-dotenv
 ping3
-line-bot-sdk
-boto3
 paramiko
 
 # mmaction2 -----------------------------------
