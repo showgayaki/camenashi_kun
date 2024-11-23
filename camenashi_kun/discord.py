@@ -11,7 +11,7 @@ logger = getLogger(__name__)
 
 class Discord:
     def __init__(self, url: str) -> None:
-        self.webhuook_url = url
+        self.webhook_url = url
         self.timeout = (3, 6)
 
     def post(self, content: str, files: list[Path] = []) -> bool:
@@ -39,18 +39,26 @@ class Discord:
                 )
 
         try:
-            logger.info('Starting post Discord.')
+            logger.info('Starting Discord webhook post.')
             response = requests.post(
-                self.webhuook_url,
+                self.webhook_url,
                 data=data,
                 files=multiple_files,
-                timeout=self.timeout
+                timeout=self.timeout,
             )
-            logger.info(f'Status Code: {response.status_code}')
-            if 200 <= response.status_code < 300:
+
+            logger.info(f'Received status code: {response.status_code}')
+            if response.status_code == 204:
+                logger.info('Discord webhook post successful.')
                 return True
+            else:
+                logger.warning(f'Failed to post: {response.status_code}, {response.text}')
+        except requests.exceptions.Timeout:
+            logger.error("Request timed out.")
+        except requests.exceptions.ConnectionError as ce:
+            logger.error(f"Connection error: {ce}")
         except Exception as e:
-            logger.critical(e)
+            logger.critical(f"Unexpected error: {e}")
 
         return False
 
