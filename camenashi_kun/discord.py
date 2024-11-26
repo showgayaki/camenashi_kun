@@ -48,7 +48,7 @@ class Discord:
             )
 
             logger.info(f'Received status code: {response.status_code}')
-            if response.status_code == 204:
+            if 200 <= response.status_code < 300:
                 logger.info('Discord webhook post successful.')
                 return True
             else:
