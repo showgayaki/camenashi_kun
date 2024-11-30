@@ -1,4 +1,6 @@
 # camenashi_kun
+[TP-LinkのTapoを使用](https://www.tp-link.com/jp/support/faq/2680/)して、我が家のねこちゃんのおトイレを監視します。  
+検知したらおトイレの様子の動画を、DiscordにPOSTします。
 
 ## インストール
 ### 準備
@@ -20,34 +22,22 @@ SciPyのインストールに失敗するときは、以下が必要かも。
 
 ## .env設定例
 ```
-CAMERA_IP=[camera ip address]
-CAMERA_USER=[camera username]
-CAMERA_PASS=[camera password]
+CAMERA_IP=[camera ip address]  # カメラのIPアドレス
+CAMERA_USER=[camera username]  # カメラのユーザー名
+CAMERA_PASS=[camera password]  # カメラのパスワード
 
-NOTICE_THRESHOLD=10
-DETECT_LABEL=cat
-THRESHOLD_NO_DETECTED_SECONDS=25
-PAUSE_SECONDS=60
-BLACK_SCREEN_SECONDS=300
-MOVIE_SPEED=4
-DETECT_AREA=0,0,480,384
+NOTICE_THRESHOLD=5  # 検知対象のラベルが何フレーム現れたら検知とするか
+DETECT_LABEL=cat  # 検知対象のラベル
+THRESHOLD_NO_DETECTED_SECONDS=25  # 検知対象のラベルが検知されなくなってから、何秒経ったら未検知とするか
+PAUSE_SECONDS=60  # エラー時の再起動までの時間
+BLACK_SCREEN_SECONDS=300  # 何秒真っ暗画面になったらやばいとするか
+MOVIE_SPEED=4  # 動画は何倍速？
+DETECT_AREA=0,0,480,384  # 映像の検知対象エリア
+IS_NOTIFIED_PING_ERROR='False'  # pingエラーを通知したかどうかのフラグ
 
-LINE_NOTIFY_ACCESS_TOKEN=
-LINE_MESSAGING_API_ACCESS_TOKEN=
-TO=
-LINE_MESSAGING_API_LIMIT=200
-IS_NOTIFIED_REACHED_LIMIT='False'
-IS_NOTIFIED_PING_ERROR='False'
-
-AWS_ACCESS_KEY_ID=
-AWS_SECRET_ACCESS_KEY=
-AWS_DEFAULT_REGION=ap-northeast-1
-S3_BUCKET_NAME=camenashi-kun
-S3_EXPIRES_IN=129600
-
-SSH_HOSTNAME=
-SSH_UPLOAD_DIR=/share/Camenashi
-THRESHOLD_STORAGE_DAYS=180
+SSH_HOSTNAME=  # 動画アップロード先のホスト(~/.ssh/configに記載されているホスト名)
+SSH_UPLOAD_DIR=/share/Camenashi  # 動画アップロード先のディレクトリ
+THRESHOLD_STORAGE_DAYS=240  # 動画の保存期間(日)
 ```
 
 ## 実行
