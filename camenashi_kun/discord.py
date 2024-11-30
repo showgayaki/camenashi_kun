@@ -14,7 +14,7 @@ class Discord:
         self.webhook_url = url
         self.timeout = (3, 6)
 
-    def post(self, content: str, files: list[Path] = []) -> bool:
+    def post(self, content: str, files: list[Path] = [], mention_id=None) -> bool:
         '''
         https://discord.com/developers/docs/resources/webhook
         '''
@@ -24,7 +24,7 @@ class Discord:
         emoji1, emoji2 = self._choice_emoji(2)
         data = {
             'username': f'{emoji1}かめなしくん{emoji2}',
-            'content': content,
+            'content': f'<@{mention_id}> {content}' if mention_id else content,
         }
 
         multiple_files = []

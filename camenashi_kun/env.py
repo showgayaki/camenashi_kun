@@ -5,7 +5,7 @@ from dotenv import load_dotenv
 
 class Env:
     def __init__(self) -> None:
-        load_dotenv()
+        load_dotenv(override=True)
         self._load()
 
     def _load(self) -> None:
@@ -30,6 +30,7 @@ class Env:
 
         self.DISCORD_WEBHOOK_URL = os.getenv('DISCORD_WEBHOOK_URL')
         self.EMOJI_API_URL = os.getenv('EMOJI_API_URL')
+        self.MENTION_ID = os.getenv('MENTION_ID')
 
     def update_value(self, key: str, after) -> tuple[str, object]:
         before = os.environ[key]

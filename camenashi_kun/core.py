@@ -148,7 +148,12 @@ def main(no_view=False) -> None:
                             removed_videos = []
                             sorted_videos = sorted(video_dir.iterdir(), key=lambda x: x.name)
                             for video in sorted_videos:
-                                if disco.post(f'{env.DETECT_LABEL}を動体検知しました', [video]):
+                                uploaded_file_path = f'//{ssh.config["hostname"]}/{Path(env.SSH_UPLOAD_DIR).joinpath(video.name)}'
+                                if disco.post(
+                                    f'{env.DETECT_LABEL}を動体検知しました\n{uploaded_file_path}',
+                                    [video],
+                                    mention_id=env.MENTION_ID,
+                                ):
                                     removed_videos.append(str(video))
                                     # 削除
                                     Path(video).unlink()
