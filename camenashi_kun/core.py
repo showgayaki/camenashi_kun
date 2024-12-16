@@ -40,6 +40,8 @@ def ping_to_target(target_ip: str) -> bool:
                 if env.IS_NOTIFIED_PING_ERROR:
                     # Discordに通知
                     disco.post(f'\n★ping OK\n{env.CAMERA_IP}と疎通が取れました。\n検知を再開します。')
+                    # 環境変数を更新
+                    env.update_value('IS_NOTIFIED_PING_ERROR', False)
                 return True
             else:
                 raise

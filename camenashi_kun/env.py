@@ -40,6 +40,6 @@ class Env:
         dotenv.set_key(dotenv_file, key, str_value)
         os.environ[key] = str_value
 
-        load_dotenv()
+        load_dotenv(override=True)
         self._load()
         return before, after
