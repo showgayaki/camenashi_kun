@@ -81,7 +81,7 @@ def main(no_view=False) -> None:
         try:
             for label_list, frame, fps, log_str in detect.run(
                 weights='yolov5/yolov5s.pt',
-                imgsz=[384, 640],
+                imgsz=[360, 640],
                 source=f'rtsp://{env.CAMERA_USER}:{env.CAMERA_PASS}@{env.CAMERA_IP}:554/stream2',
                 nosave=True,
                 view_img=view_img,
@@ -90,6 +90,7 @@ def main(no_view=False) -> None:
                 # ループの最初で解像度を取得しておく
                 if is_first_loop:
                     frame_height, frame_width, _ = frame.shape
+                    logger.info(f'frame_width: {frame_width}, frame_height: {frame_height}')
                     is_first_loop = False
 
                 # video_writerオブジェクトがNoneじゃなければ(動体検知したら)、録画する
