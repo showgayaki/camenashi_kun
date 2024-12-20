@@ -43,6 +43,10 @@
       "camenashi_kun.discord": {
         "level": "INFO",
         "handlers": ["consoleHandler", "rotatingFileHandler"]
+      },
+      "camenashi_kun.ffmpeg": {
+        "level": "INFO",
+        "handlers": ["consoleHandler", "rotatingFileHandler"]
       }
     },
     "root": {

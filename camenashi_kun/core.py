@@ -10,8 +10,9 @@ import numpy as np
 from ping3 import ping
 
 from camenashi_kun import env
-from camenashi_kun.discord import Discord
+from camenashi_kun.ffmpeg import Ffmpeg
 from camenashi_kun.ssh import Ssh
+from camenashi_kun.discord import Discord
 import yolov5.detect as detect
 
 
@@ -131,6 +132,10 @@ def main(no_view=False) -> None:
                             video_writer.release()
                             logger.info('○○○ Finish Rec ○○○')
                             logger.info('=== Reset detected count. ===')
+
+                            # 圧縮
+                            ffmpeg = Ffmpeg(env.FFMPEG_CRF)
+                            video_file_path = ffmpeg.compress(video_file_path)
 
                             # SFTPでアップロード
                             ssh = Ssh(env.SSH_HOSTNAME)
