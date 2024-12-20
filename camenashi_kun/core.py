@@ -134,7 +134,7 @@ def main(no_view=False) -> None:
                             logger.info('=== Reset detected count. ===')
 
                             # 圧縮
-                            ffmpeg = Ffmpeg(env.FFMPEG_CRF)
+                            ffmpeg = Ffmpeg(env.FFMPEG_BITRATE)
                             video_file_path = ffmpeg.compress(video_file_path)
 
                             # SFTPでアップロード

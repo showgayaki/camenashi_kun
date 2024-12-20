@@ -7,15 +7,15 @@ logger = getLogger(__name__)
 
 
 class Ffmpeg:
-    def __init__(self, crf) -> None:
+    def __init__(self, bitrate) -> None:
         self.mega = 10**6
-        self.crf = crf
+        self.bitrate = bitrate
 
     def compress(self, video_file_path: Path) -> Path:
         compressed_file_path = Path(video_file_path.parent).joinpath(f'{video_file_path.stem}_comporessed{video_file_path.suffix}')
         try:
             # ffmpeg -i {video_file_path} -crf 18 {compressed_file_path}
-            subprocess.run(['ffmpeg', '-i', str(video_file_path), '-crf', self.crf, str(compressed_file_path)])
+            subprocess.run(['ffmpeg', '-i', str(video_file_path), '-c:v', 'libopenh264', '-b:v', f'{self.bitrate}k', str(compressed_file_path)])
 
             # 圧縮前後のファイルサイズ
             size_before = video_file_path.stat().st_size / self.mega
