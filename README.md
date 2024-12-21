@@ -25,6 +25,7 @@ SciPyのインストールに失敗するときは、以下が必要かも。
 CAMERA_IP=[camera ip address]  # カメラのIPアドレス
 CAMERA_USER=[camera username]  # カメラのユーザー名
 CAMERA_PASS=[camera password]  # カメラのパスワード
+FFMPEG_OPTIONS=-c:v,libopenh264,-b:v,800k  # FFMPEGのオプション、カンマ区切りで指定
 
 NOTICE_THRESHOLD=5  # 検知対象のラベルが何フレーム現れたら検知とするか
 DETECT_LABEL=cat  # 検知対象のラベル
