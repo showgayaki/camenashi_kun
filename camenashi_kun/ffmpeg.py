@@ -25,7 +25,7 @@ class Ffmpeg:
 
             # 圧縮に成功したら、元のファイルは削除する
             logger.info(f'Deleting the file: {video_file_path}')
-            # Path(video_file_path).unlink()
+            Path(video_file_path).unlink()
 
             return compressed_file_path
         except Exception as e:
