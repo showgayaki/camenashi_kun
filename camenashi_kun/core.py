@@ -82,7 +82,7 @@ def main(no_view=False) -> None:
         try:
             for label_list, frame, fps, log_str in detect.run(
                 weights='yolov5/yolov5s.pt',
-                imgsz=[360, 640],
+                imgsz=[384, 640],
                 source=f'rtsp://{env.CAMERA_USER}:{env.CAMERA_PASS}@{env.CAMERA_IP}:554/stream2',
                 nosave=True,
                 view_img=view_img,

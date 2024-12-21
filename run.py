@@ -29,6 +29,10 @@ if __name__ == '__main__':
     computer_name = socket.gethostname()
     logger.info(f'===== {env.APP_NAME} Started on {computer_name} =====')
 
+    # envの内容を出力(パスワードを除く)
+    app_config = {key: '' if 'PASS' in key else value for key, value in vars(env).items()}
+    logger.info(f'App Config: {app_config}')
+
     opt = parse_opt()
     main(**vars(opt))
     # アプリケーション終了ログ
