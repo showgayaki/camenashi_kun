@@ -15,7 +15,7 @@ class Env:
         self.CAMERA_IP = os.getenv('CAMERA_IP')
         self.CAMERA_USER = os.getenv('CAMERA_USER')
         self.CAMERA_PASS = os.getenv('CAMERA_PASS')
-        self.FFMPEG_BITRATE = os.getenv('FFMPEG_BITRATE')
+        self.FFMPEG_OPTIONS = os.getenv('FFMPEG_OPTIONS').split(',')
 
         self.MOVIE_SPEED = int(os.getenv('MOVIE_SPEED'))
         self.NOTICE_THRESHOLD = int(os.getenv('NOTICE_THRESHOLD'))
