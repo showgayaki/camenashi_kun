@@ -91,8 +91,3 @@ class Ssh:
             logger.error(e)
         finally:
             client.close()
-
-
-def test():
-    ssh = Ssh('okomesan')
-    ssh.remove_old_files('/share/Camenashi', 150)
