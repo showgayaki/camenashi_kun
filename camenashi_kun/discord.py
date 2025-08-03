@@ -14,7 +14,7 @@ class Discord:
         self.webhook_url = url
         self.timeout = (3, 6)
 
-    def post(self, content: str, files: list[Path] = [], mention_id=None) -> bool:
+    def post(self, content: str, files: list[Path] = [], mention_id=None) -> tuple[bool, str]:
         '''
         https://discord.com/developers/docs/resources/webhook
         '''
@@ -27,6 +27,7 @@ class Discord:
             'content': f'<@{mention_id}> {content}' if mention_id else content,
         }
 
+        error = ''
         multiple_files = []
         if len(files):
             logger.info(f'Post files: {files}.')
@@ -50,17 +51,21 @@ class Discord:
             logger.info(f'Received status code: {response.status_code}')
             if 200 <= response.status_code < 300:
                 logger.info('Discord webhook post successful.')
-                return True
+                return True, response.text
             else:
-                logger.warning(f'Failed to post: {response.status_code}, {response.text}')
+                error = f'Failed to post: {response.status_code}, {response.text}'
+                logger.warning(error)
         except requests.exceptions.Timeout:
-            logger.error("Request timed out.")
+            error = 'Request timed out.'
+            logger.error(error)
         except requests.exceptions.ConnectionError as ce:
-            logger.error(f"Connection error: {ce}")
+            error = f'Connection error: {ce}'
+            logger.error(error)
         except Exception as e:
-            logger.critical(f"Unexpected error: {e}")
+            error = f'Unexpected error: {e}'
+            logger.error(error)
 
-        return False
+        return False, error
 
     def _choice_emoji(self, number: int) -> list:
         logger.info(f'Starting fetch emojis from {env.EMOJI_API_URL}')

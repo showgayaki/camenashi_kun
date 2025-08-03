@@ -157,11 +157,13 @@ def main(no_view=False) -> None:
                             sorted_videos = sorted(video_dir.iterdir(), key=lambda x: x.name)
                             for video in sorted_videos:
                                 uploaded_file_path = f'//{ssh.config["hostname"]}{Path(env.SSH_UPLOAD_DIR).joinpath(video.name)}'
-                                if disco.post(
+                                post_result, post_message = disco.post(
                                     f'{env.DETECT_LABEL}を動体検知しました\n{uploaded_file_path}',
                                     [video],
                                     mention_id=env.MENTION_ID,
-                                ):
+                                )
+
+                                if post_result:
                                     removed_videos.append(str(video))
                                     # 削除
                                     Path(video).unlink()
@@ -169,6 +171,9 @@ def main(no_view=False) -> None:
                                     if len(sorted_videos) > 1:
                                         time.sleep(3)
                                 else:
+                                    disco.post(
+                                        f'動画のPOSTに失敗しました。\n{post_message}\n'
+                                    )
                                     # POSTに失敗したら、以降のファイルは次回に持ち越し
                                     break
                             logger.info(f'Delete videos: {removed_videos}')
