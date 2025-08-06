@@ -12,7 +12,7 @@ logger = getLogger(__name__)
 class Discord:
     def __init__(self, url: str) -> None:
         self.webhook_url = url
-        self.timeout = (3, 6)
+        self.timeout = (6, 12)
 
     def post(self, content: str, files: list[Path] = [], mention_id=None) -> tuple[bool, str]:
         '''
