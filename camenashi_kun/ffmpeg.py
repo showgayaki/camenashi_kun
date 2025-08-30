@@ -11,7 +11,7 @@ class Ffmpeg:
         self.mega = 10**6
 
     def compress(self, video_file_path: Path, options: list) -> Path:
-        compressed_file_path = Path(video_file_path.parent).joinpath(f'{video_file_path.stem}_comporessed{video_file_path.suffix}')
+        compressed_file_path = Path(video_file_path.parent).joinpath(f'{video_file_path.stem}_compressed{video_file_path.suffix}')
         try:
             # ffmpeg -i {video_file_path} {options} {compressed_file_path}
             command = ['ffmpeg', '-i', str(video_file_path), *options, str(compressed_file_path)]
